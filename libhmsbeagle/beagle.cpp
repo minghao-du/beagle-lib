@@ -957,6 +957,19 @@ int beagleSetPatternWeights(int instance,
     return returnValue;
 }
 
+int beagleSetSubsampling(int instance,
+                         int subsampleNumber) {
+    DEBUG_START_TIME();
+    DEBUG_START_ENERGY();
+    beagle::BeagleImpl* beagleInstance = beagle::getBeagleInstance(instance);
+    if (beagleInstance == NULL)
+        return BEAGLE_ERROR_UNINITIALIZED_INSTANCE;
+    int returnValue = beagleInstance->setSubsampling(subsampleNumber);
+    DEBUG_END_TIME();
+    DEBUG_END_ENERGY();
+    return returnValue;
+}
+
 int beagleSetPatternPartitions(int instance,
                                int partitionCount,
                                const int* inPatternPartitions) {
@@ -1254,14 +1267,15 @@ int beagleUpdateTransitionMatricesWithMultipleModels(int instance,
 int beagleUpdatePartials(const int instance,
                          const BeagleOperation* operations,
                          int operationCount,
-                         int cumulativeScalingIndex) {
+                         int cumulativeScalingIndex,
+                         bool subsampling) {
     DEBUG_START_TIME();
     DEBUG_START_ENERGY();
 //    try {
         beagle::BeagleImpl* beagleInstance = beagle::getBeagleInstance(instance);
         if (beagleInstance == NULL)
             return BEAGLE_ERROR_UNINITIALIZED_INSTANCE;
-        int returnValue = beagleInstance->updatePartials((const int*)operations, operationCount, cumulativeScalingIndex);
+        int returnValue = beagleInstance->updatePartials((const int*)operations, operationCount, cumulativeScalingIndex, subsampling);
         DEBUG_END_TIME();
         DEBUG_END_ENERGY();
         return returnValue;

@@ -81,6 +81,10 @@ public:
 
     virtual int setPatternWeights(const double* inPatternWeights) = 0;
 
+    virtual int setSamplingSize(int samplingSize) = 0;
+
+    virtual int setSubsampling(int subsampleNumber) = 0;
+
     virtual int setPatternPartitions(int partitionCount,
                                      const int* inPatternPartitions) = 0;
 
@@ -146,7 +150,8 @@ public:
 
     virtual int updatePartials(const int* operations,
                                int operationCount,
-                               int cumulativeScalingIndex) = 0;
+                               int cumulativeScalingIndex,
+                               bool subsampling) = 0;
 
 	virtual int updatePrePartials(const int *operations,
                                   int count,
@@ -307,7 +312,7 @@ public:
 
     virtual int getBastaBuffer(int bufferIndex,
                                double* out) = 0;
-                                   
+
 //protected:
     int resourceNumber;
 };

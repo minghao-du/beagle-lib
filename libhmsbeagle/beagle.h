@@ -606,8 +606,35 @@ BEAGLE_DLLEXPORT int beagleSetCategoryRatesWithIndex(int instance,
  *
  * @return error code
  */
+typedef int (BEAGLE_OP_STATUS *beagleSetPatternWeights_t)(int instance,
+                                                     const double* inPatternWeights);
+
+typedef int (BEAGLE_OP_STATUS *beagleSetSamplingSize_t)(int instance,
+                                                     int samplingSize);
+
+typedef int (BEAGLE_OP_STATUS *beagleSetPatternPartitions_t)(int instance,
+                                                        int partitionCount,
+                                                        const int* inPatternPartitions);
+
+/**
+ * @brief Set the number of patterns to subsample
+ *
+ * This function sets the number of sites to be subsampled for likelihood calculations.
+ * The actual subsampling is performed internally based on existing pattern weights.
+ *
+ * @param instance              Instance number (input)
+ * @param subsampleNumber       Number of sites to subsample (input)
+ *
+ * @return error code
+ */
 BEAGLE_DLLEXPORT int beagleSetPatternWeights(int instance,
                                        const double* inPatternWeights);
+
+BEAGLE_DLLEXPORT int beagleSetSamplingSize(int instance,
+                                          int samplingSize);
+
+BEAGLE_DLLEXPORT int beagleSetSubsampling(int instance,
+                                          int subsampleNumber);
 
 /**
  * @brief Set pattern partition assignments
@@ -901,7 +928,8 @@ typedef struct {
 BEAGLE_DLLEXPORT int beagleUpdatePartials(const int instance,
                                           const BeagleOperation* operations,
                                           int operationCount,
-                                          int cumulativeScaleIndex);
+                                          int cumulativeScaleIndex,
+                                          bool subsampling);
 
 /**
  * @brief Calculate or queue for calculation pre-order partials using a list of operations
@@ -1458,8 +1486,7 @@ BEAGLE_DLLEXPORT int beagleAllocateBastaBuffers(const int instance,
                                                 const int bufferCount,
                                                 const int bufferLength,
                                                 const int partialsCount,
-                                                const int initial,
-                                                const int numThreads);
+                                                const int initial);
 
 BEAGLE_DLLEXPORT int beagleGetBastaBuffer(const int instance,
                                           const int bufferIndex,
