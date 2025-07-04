@@ -14,6 +14,15 @@
             ]
         },
         {
+            "label": "Build stochastictest",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}/build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DBEAGLE_DEBUG_VALUES=ON -DBUILD_OPENMP=OFF && make stochastictest",
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
             "label": "CMake Configure",
             "type": "shell",
             "command": "cd ${workspaceFolder} && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DBEAGLE_DEBUG_VALUES=ON",

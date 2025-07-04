@@ -25,6 +25,10 @@ add_executable(synthetictest
 		synthetictest/linalg.h
 		)
 
+# New executable for stochastictest
+add_executable(stochastictest
+        stochastic/stochastictest.cpp)
+
 #add_executable(complextest
 #        complextest/complextest.cpp)
 if(BEAGLE_BENCHMARK)
@@ -62,6 +66,17 @@ if(BUILD_SSE)
 	target_link_libraries(synthetictest hmsbeagle-cpu-sse)
 endif(BUILD_SSE)
 
+# New library linking for stochastictest
+target_link_libraries(stochastictest
+		hmsbeagle
+		hmsbeagle-cpu
+		${BENCHMARK_LIBS}
+		${CMAKE_DL_LIBS})
+if(BUILD_SSE)
+	target_link_libraries(stochastictest hmsbeagle-cpu-sse)
+endif(BUILD_SSE)
+
+
 if(BUILD_SSE)
 	target_link_libraries(hmctest
 		hmsbeagle-cpu-sse)
@@ -71,6 +86,7 @@ if(BUILD_SSE)
 endif(BUILD_SSE)
 
 add_test(hmctest hmctest)
+add_test(stochastictest stochastictest) # New test for stochastictest
 
 #target_link_libraries(hmctest5 hmsbeagle ${CMAKE_DL_LIBS})
 #target_link_libraries(hmcGaptest hmsbeagle ${CMAKE_DL_LIBS})
