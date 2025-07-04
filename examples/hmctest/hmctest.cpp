@@ -483,7 +483,8 @@ int main( int argc, const char* argv[] )
 	beagleUpdatePartials(instance,      // instance
                    operations,     // eigenIndex
                    2,              // operationCount
-                   BEAGLE_OP_NONE);          // cumulative scaling index
+                   BEAGLE_OP_NONE,
+                   false);          // cumulative scaling index
 
     ///XJ: I decided to store the pre-order partials vector in reverse order as those of post-orders
     ///This means that the two indices to the partials of root nodes are adjacent.

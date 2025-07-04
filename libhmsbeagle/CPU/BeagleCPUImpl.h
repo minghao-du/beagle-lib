@@ -33,6 +33,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <functional>
+#include <random>    // For std::mt19937, std::random_device
 
 //#define BEAGLE_CACHE_FRIENDLY
 
@@ -101,6 +102,22 @@ protected:
 
     REALTYPE** gCategoryWeights;
     REALTYPE** gStateFrequencies;
+
+    // Subsampling members
+    int mSubsampleNumber;                        // Number of sites to subsample
+    std::vector<double> mPatternWeightsOriginal; // Stores the full set of pattern weights before subsampling
+    int mOriginalPatternCount;                   // Stores the original total number of patterns before subsampling
+    std::vector<int> mSubsampledPatternIndices;    // Indices of the subsampled patterns relative to the original set
+    std::vector<double> mSubsampledPatternWeights; // Weights of the subsampled patterns
+    bool mIsSubsamplingEnabled;                  // Flag to indicate if subsampling is active
+    std::vector<int> mPatternIndividualCounts;       // Cached counts of individuals per pattern
+    long long mTotalIndividualsInSystem;           // Cached total individuals in the system
+    std::vector<int> mIndividualSourcePatternIndices; // Cached list of source pattern indices for all individuals
+
+    std::random_device rd_shuffle_device; // Renamed to avoid conflict with local variables if any
+    std::mt19937 g_shuffle_engine;      // Renamed for clarity
+    int kSamplingSize;
+    std::vector<int> kSampledSites;
 
     //@ the size of these pointers are known at alloc-time, so the partials and
     //      tipStates field should be switched to vectors of vectors (to make
@@ -245,6 +262,10 @@ public:
 
     int setPatternWeights(const double* inPatternWeights);
 
+    int setSubsampling(int subsampleNumber);
+
+    int setSamplingSize(int samplingSize);
+
     int setPatternPartitions(int partitionCount,
                              const int* inPatternPartitions);
 
@@ -325,7 +346,8 @@ public:
     // rescale indicate if partials should be rescaled during peeling
     int updatePartials(const int* operations,
                        int operationCount,
-                       int cumulativeScalingIndex);
+                       int cumulativeScalingIndex,
+                       bool subsampling);
 
     int updatePrePartials(const int *operations,
                           int operationCount,
@@ -541,7 +563,8 @@ protected:
     virtual int upPartials(bool byPartition,
                            const int* operations,
                            int operationCount,
-                           int cumulativeScalingIndex);
+                           int cumulativeScalingIndex,
+                           bool subsampling);
 
     virtual int upPrePartials(bool byPartition,
                               const int* operations,
@@ -630,7 +653,8 @@ protected:
                                   const int* states2,
                                   const REALTYPE* matrices2,
                                   int startPattern,
-                                  int endPattern);
+                                  int endPattern,
+                                  bool subsampling = false);
 
 
     virtual void calcStatesPartials(REALTYPE* destP,
@@ -639,7 +663,8 @@ protected:
                                     const REALTYPE* partials2,
                                     const REALTYPE* matrices2,
                                     int startPattern,
-                                    int endPatternd);
+                                    int endPatternd,
+                                    bool subsampling = false);
 
     virtual void calcPartialsPartials(REALTYPE* destP,
                                       const REALTYPE* partials1,
@@ -873,6 +898,9 @@ protected:
                         const REALTYPE* matrices2,
                         REALTYPE* output,
                         int n);
+
+    // Helper function for subsampling logic (signature changed)
+    int resampleIndividuals();
 
 private:
 

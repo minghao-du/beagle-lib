@@ -531,7 +531,8 @@ int benchmarkResource(int resource,
                 beagleUpdatePartials( instance,      // instance
                                 (BeagleOperation*)operations,     // operations
                                 internalCount*eigenCount,              // operationCount
-                                BEAGLE_OP_NONE);             // cumulative scaling index
+                                BEAGLE_OP_NONE,
+                                false);             // cumulative scaling index
             }
 
         int scalingFactorsCount = internalCount;

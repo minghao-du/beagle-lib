@@ -1,0 +1,33 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build hmctest",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}/build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DBEAGLE_DEBUG_VALUES=ON -DBUILD_OPENMP=OFF && make hmctest",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "CMake Configure",
+            "type": "shell",
+            "command": "cd ${workspaceFolder} && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DBEAGLE_DEBUG_VALUES=ON",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Full Rebuild",
+            "type": "shell",
+            "command": "cd ${workspaceFolder} && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DBEAGLE_DEBUG_VALUES=ON && make",
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        }
+    ]
+}

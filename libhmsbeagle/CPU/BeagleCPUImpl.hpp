@@ -70,6 +70,10 @@
 #include <cassert>
 #include <vector>
 #include <cfloat>
+#include <numeric> // For std::iota
+#include <algorithm> // For std::discrete_distribution and std::mt19937 if not using custom sampling
+#include <random>    // For std::mt19937, std::random_device
+#include <map>       // For std::map
 
 #include "libhmsbeagle/beagle.h"
 #include "libhmsbeagle/CPU/Precision.h"
@@ -274,6 +278,13 @@ BeagleCPUImpl<BEAGLE_CPU_GENERIC>::~BeagleCPUImpl() {
             free(gAutoPartitionOutSumLogLikelihoods);
         }
     }
+
+    // Clear cached subsampling data structures
+    mPatternIndividualCounts.clear();
+    mIndividualSourcePatternIndices.clear();
+    mPatternWeightsOriginal.clear();
+    mSubsampledPatternIndices.clear();
+    mSubsampledPatternWeights.clear();
 }
 
 BEAGLE_CPU_TEMPLATE
@@ -619,6 +630,16 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::createInstance(int tipCount,
         }
     }
 
+    // Initialize subsampling members
+    mSubsampleNumber = 0;
+    mOriginalPatternCount = patternCount;
+    mIsSubsamplingEnabled = false;
+    mPatternIndividualCounts.clear(); // Initialize as empty vector
+    mTotalIndividualsInSystem = 0;    // Initialize to 0
+    mIndividualSourcePatternIndices.clear(); // Initialize as empty vector
+
+    g_shuffle_engine.seed(rd_shuffle_device());
+
     return BEAGLE_SUCCESS;
 }
 
@@ -928,7 +949,144 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::setCategoryRatesWithIndex(int categoryRat
 BEAGLE_CPU_TEMPLATE
 int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::setPatternWeights(const double* inPatternWeights) {
     assert(inPatternWeights != 0L);
+    // Ensure mOriginalPatternCount is set (should be from createInstance)
+    // If kPatternCount is the definitive source, use it.
+    // For this change, we assume mOriginalPatternCount is correctly set by createInstance.
+
+    mPatternWeightsOriginal.resize(mOriginalPatternCount);
+    memcpy(mPatternWeightsOriginal.data(), inPatternWeights, mOriginalPatternCount * sizeof(double));
+
+    // Original gPatternWeights
     memcpy(gPatternWeights, inPatternWeights, sizeof(double) * kPatternCount);
+
+    // When pattern weights change, invalidate the cached subsampling data
+    mPatternIndividualCounts.clear();
+    mIndividualSourcePatternIndices.clear();
+    mTotalIndividualsInSystem = 0;
+
+    return BEAGLE_SUCCESS;
+}
+
+BEAGLE_CPU_TEMPLATE
+int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::resampleIndividuals() {
+
+    // Shuffle this list to randomize individuals
+    // todo: random seed?
+    std::shuffle(mIndividualSourcePatternIndices.begin(), mIndividualSourcePatternIndices.end(), g_shuffle_engine);
+
+    // Clear previous results and store new counts of individuals sampled per pattern
+    mSubsampledPatternIndices.clear();
+    mSubsampledPatternWeights.clear(); 
+    
+    std::map<int, int> pattern_actual_sample_counts; // Key: pattern_index, Value: count of individuals sampled
+    // Select the first mSubsampleNumber from the shuffled list
+    // Ensure we don't try to sample more than available if mIndividualSourcePatternIndices is smaller
+    // (e.g. if totalIndividualsInSystem was less than mSubsampleNumber, though setSubsampling should prevent this)
+    int individualsToSample = mSubsampleNumber;
+    for (int k = 0; k < individualsToSample; ++k) {
+        pattern_actual_sample_counts[mIndividualSourcePatternIndices[k]]++;
+    }
+
+    // Populate the output vectors (mSubsampledPatternIndices and mSubsampledPatternWeights)
+    // The map iteration ensures that pattern indices are sorted.
+    for (const auto& pair : pattern_actual_sample_counts) {
+        mSubsampledPatternIndices.push_back(pair.first);
+        mSubsampledPatternWeights.push_back(static_cast<double>(pair.second));
+    }
+
+    return BEAGLE_SUCCESS;
+}
+
+BEAGLE_CPU_TEMPLATE
+int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::setSubsampling(int subsampleNumber) {
+    assert(subsampleNumber >= 0);
+
+    // If subsampleNumber is zero, disable subsampling and restore original weights.
+    if (subsampleNumber == 0) {
+        mIsSubsamplingEnabled = false;
+        mSubsampleNumber = 0; // Store that subsampling is off (or 0 items requested)
+        mSubsampledPatternIndices.clear();
+        mSubsampledPatternWeights.clear();
+        // Also clear the caches to allow re-initialization
+        mPatternIndividualCounts.clear();
+        mIndividualSourcePatternIndices.clear();
+        mTotalIndividualsInSystem = 0;
+        return BEAGLE_SUCCESS;
+    }
+
+    // Validate preconditions for actual subsampling logic
+    if (mOriginalPatternCount == 0) {
+        // Cannot subsample if there are no original patterns, and subsampleNumber > 0
+        return BEAGLE_ERROR_OUT_OF_RANGE;
+    }
+    if (mPatternWeightsOriginal.empty() || mPatternWeightsOriginal.size() != (size_t)mOriginalPatternCount) {
+        // Original pattern weights must be set first via setPatternWeights and be consistent
+        return BEAGLE_ERROR_GENERAL;
+    }
+
+    mSubsampleNumber = subsampleNumber;
+
+    // Clear caches before repopulating
+    mPatternIndividualCounts.clear();
+    mIndividualSourcePatternIndices.clear();
+
+    mPatternIndividualCounts.assign(mOriginalPatternCount, 0);
+    mTotalIndividualsInSystem = 0;
+    for (int i = 0; i < mOriginalPatternCount; ++i) {
+        mPatternIndividualCounts[i] = static_cast<int>(std::max(0.0, mPatternWeightsOriginal[i]));
+        mTotalIndividualsInSystem += mPatternIndividualCounts[i];
+    }
+
+    if (mTotalIndividualsInSystem == 0) {
+        return BEAGLE_ERROR_GENERAL;
+    }
+
+    mIndividualSourcePatternIndices.reserve(mTotalIndividualsInSystem);
+    for (int i = 0; i < mOriginalPatternCount; ++i) {
+        // Add pattern index 'i' for 'mPatternIndividualCounts[i]' times
+        for (int count = 0; count < mPatternIndividualCounts[i]; ++count) {
+            mIndividualSourcePatternIndices.push_back(i);
+        }
+    }
+
+    // Error with subsampling if more individuals requested than in system
+    if (mSubsampleNumber > mTotalIndividualsInSystem) {
+        return BEAGLE_ERROR_OUT_OF_RANGE;
+    }
+
+    mIsSubsamplingEnabled = true;
+
+    return BEAGLE_SUCCESS;
+}
+
+BEAGLE_CPU_TEMPLATE
+int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::setSamplingSize(int samplingSize) {
+    if (samplingSize < 0) {
+        return BEAGLE_ERROR_OUT_OF_RANGE;
+    }
+
+    if (samplingSize == 0) {
+        kSamplingSize = 0;
+        kSampledSites.clear();
+        return BEAGLE_SUCCESS;
+    }
+
+    if (samplingSize > kPatternCount) {
+        return BEAGLE_ERROR_OUT_OF_RANGE; // Cannot sample more than available patterns
+    }
+
+    kSamplingSize = samplingSize;
+    kSampledSites.resize(kSamplingSize);
+
+    // Perform weighted random sampling based on gPatternWeights
+    // Create a discrete distribution using gPatternWeights
+    std::discrete_distribution<> distribution(gPatternWeights, gPatternWeights + kPatternCount);
+
+    // Sample 'samplingSize' pattern indices
+    for (int i = 0; i < kSamplingSize; ++i) {
+        kSampledSites[i] = distribution(g_shuffle_engine);
+    }
+
     return BEAGLE_SUCCESS;
 }
 
@@ -1109,8 +1267,15 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::getLogLikelihood(double* outSumLogLikelih
     int returnCode = BEAGLE_SUCCESS;
 
     *outSumLogLikelihood = 0.0;
-    for(int k=0; k < kPatternCount; k++) {
-        *outSumLogLikelihood += outLogLikelihoodsTmp[k] * gPatternWeights[k];
+    if (kSamplingSize > 0) {
+        for(int k=0; k < kSamplingSize; k++) {
+            int patternIndex = kSampledSites[k];
+            *outSumLogLikelihood += outLogLikelihoodsTmp[patternIndex] * gPatternWeights[patternIndex];
+        }
+    } else {
+        for(int k=0; k < kPatternCount; k++) {
+            *outSumLogLikelihood += outLogLikelihoodsTmp[k] * gPatternWeights[k];
+        }
     }
 
     if (*outSumLogLikelihood != *outSumLogLikelihood)
@@ -1124,14 +1289,28 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::getDerivatives(double* outSumFirstDerivat
                                                       double* outSumSecondDerivative) {
 
     *outSumFirstDerivative = 0.0;
-    for (int i = 0; i < kPatternCount; i++) {
-        *outSumFirstDerivative += outFirstDerivativesTmp[i] * gPatternWeights[i];
+    if (kSamplingSize > 0) {
+        for (int i = 0; i < kSamplingSize; i++) {
+            int patternIndex = kSampledSites[i];
+            *outSumFirstDerivative += outFirstDerivativesTmp[patternIndex] * gPatternWeights[patternIndex];
+        }
+    } else {
+        for (int i = 0; i < kPatternCount; i++) {
+            *outSumFirstDerivative += outFirstDerivativesTmp[i] * gPatternWeights[i];
+        }
     }
 
     if (outSumSecondDerivative != NULL) {
         *outSumSecondDerivative = 0.0;
-        for (int i = 0; i < kPatternCount; i++) {
-            *outSumSecondDerivative += outSecondDerivativesTmp[i] * gPatternWeights[i];
+        if (kSamplingSize > 0) {
+            for (int i = 0; i < kSamplingSize; i++) {
+                int patternIndex = kSampledSites[i];
+                *outSumSecondDerivative += outSecondDerivativesTmp[patternIndex] * gPatternWeights[patternIndex];
+            }
+        } else {
+            for (int i = 0; i < kPatternCount; i++) {
+                *outSumSecondDerivative += outSecondDerivativesTmp[i] * gPatternWeights[i];
+            }
         }
     }
 
@@ -1471,7 +1650,8 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::updateTransitionMatricesWithMultipleModel
 BEAGLE_CPU_TEMPLATE
 int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::updatePartials(const int* operations,
                                                       int count,
-                                                      int cumulativeScaleIndex) {
+                                                      int cumulativeScaleIndex,
+                                                      bool subsampling) {
 
     int returnCode = BEAGLE_ERROR_GENERAL;
 
@@ -1488,7 +1668,8 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::updatePartials(const int* operations,
         returnCode = upPartials(byPartition,
                                 operations,
                                 count,
-                                cumulativeScaleIndex);
+                                cumulativeScaleIndex,
+                                subsampling);
     }
 
     return returnCode;
@@ -2519,7 +2700,8 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::updatePartialsByPartition(const int* oper
         returnCode = upPartials(byPartition,
                                 operations,
                                 count,
-                                BEAGLE_OP_NONE);
+                                BEAGLE_OP_NONE,
+                                false);
     }
 
     return returnCode;
@@ -2588,7 +2770,8 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::upPartialsByPartitionAsync(const int* ope
                       true,
                       (const int*) gThreadOperations[i],
                       gThreadOpCounts[i],
-                      BEAGLE_OP_NONE));
+                      BEAGLE_OP_NONE,
+                      false));
 
         gFutures[i] = threadTask.get_future();
         threadData* td = &gThreads[i];
@@ -2611,7 +2794,15 @@ BEAGLE_CPU_TEMPLATE
 int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::upPartials(bool byPartition,
                                                   const int* operations,
                                                   int count,
-                                                  int cumulativeScaleIndex) {
+                                                  int cumulativeScaleIndex,
+                                                  bool subsampling) {
+
+    if (subsampling) {
+        if (!mIsSubsamplingEnabled) {
+            return BEAGLE_ERROR_GENERAL; // Subsampling not set up
+        }
+        resampleIndividuals(); // Perform sampling
+    }
 
     REALTYPE* cumulativeScaleBuffer = NULL;
     if (cumulativeScaleIndex != BEAGLE_OP_NONE)
@@ -2703,7 +2894,7 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::upPartials(bool byPartition,
                 } else {
                     // First compute without any scaling
                     calcStatesStates(destPartials, tipStates1, matrices1, tipStates2, matrices2,
-                                     startPattern, endPattern);
+                                     startPattern, endPattern, subsampling);
                     if (rescale == 1) { // Recompute scaleFactors
                         if (byPartition) {
                             rescalePartialsByPartition(destPartials,scalingFactors,cumulativeScaleBuffer,0, currentPartition);
@@ -2718,7 +2909,7 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::upPartials(bool byPartition,
                                                    matrices2, scalingFactors, startPattern, endPattern);
                 } else {
                     calcStatesPartials(destPartials, tipStates1, matrices1, partials2, matrices2,
-                                       startPattern, endPattern);
+                                       startPattern, endPattern, subsampling);
                     if (rescale == 1) { // Recompute scaleFactors
                         if (byPartition) {
                             rescalePartialsByPartition(destPartials,scalingFactors,cumulativeScaleBuffer,0, currentPartition);
@@ -2735,38 +2926,38 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::upPartials(bool byPartition,
                                                    scalingFactors, startPattern, endPattern);
                 } else {
                     calcStatesPartials(destPartials, tipStates2, matrices2, partials1, matrices1,
-                                       startPattern, endPattern);
+                                       startPattern, endPattern, subsampling);
                     if (rescale == 1) {// Recompute scaleFactors
                         if (byPartition) {
                             rescalePartialsByPartition(destPartials,scalingFactors,cumulativeScaleBuffer,0, currentPartition);
                         } else {
                             rescalePartials(destPartials,scalingFactors,cumulativeScaleBuffer,0);
-                        }
-                    }
-                }
-            } else {
-                if (rescale == 2) {
-                    int sIndex = parIndex - kTipCount;
-                    calcPartialsPartialsAutoScaling(destPartials,partials1,matrices1,partials2,matrices2,
-                                                     &gActiveScalingFactors[sIndex]);
-                    if (gActiveScalingFactors[sIndex])
-                        autoRescalePartials(destPartials, gAutoScaleBuffers[sIndex]);
-
-                } else if (rescale == 0) {
-                    calcPartialsPartialsFixedScaling(destPartials,partials1,matrices1,partials2,
-                                                     matrices2,scalingFactors,startPattern,endPattern);
-                } else {
-                    calcPartialsPartials(destPartials, partials1, matrices1, partials2, matrices2,
-                                         startPattern, endPattern);
-                    if (rescale == 1) {// Recompute scaleFactors
-                        if (byPartition) {
-                            rescalePartialsByPartition(destPartials,scalingFactors,cumulativeScaleBuffer,0, currentPartition);
-                        } else {
-                            rescalePartials(destPartials,scalingFactors,cumulativeScaleBuffer,0);
-                        }
                     }
                 }
             }
+        } else {
+            if (rescale == 2) {
+                int sIndex = parIndex - kTipCount;
+                calcPartialsPartialsAutoScaling(destPartials,partials1,matrices1,partials2,matrices2,
+                                                 &gActiveScalingFactors[sIndex]);
+                if (gActiveScalingFactors[sIndex])
+                    autoRescalePartials(destPartials, gAutoScaleBuffers[sIndex]);
+
+            } else if (rescale == 0) {
+                calcPartialsPartialsFixedScaling(destPartials,partials1,matrices1,partials2,
+                                                 matrices2,scalingFactors,startPattern,endPattern);
+            } else {
+                calcPartialsPartials(destPartials, partials1, matrices1, partials2, matrices2,
+                                     startPattern, endPattern);
+                if (rescale == 1) {// Recompute scaleFactors
+                    if (byPartition) {
+                        rescalePartialsByPartition(destPartials,scalingFactors,cumulativeScaleBuffer,0, currentPartition);
+                    } else {
+                        rescalePartials(destPartials,scalingFactors,cumulativeScaleBuffer,0);
+                    }
+                }
+            }
+        }
         }
 
         if (kFlags & BEAGLE_FLAG_SCALING_ALWAYS) {
@@ -4348,9 +4539,11 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogLikelihoods(const int parIndex
         for(int l = 0; l < kCategoryCount; l++) {
             int u = 0; // Index in resulting product-partials (summed over categories)
             const REALTYPE weight = wt[l];
-            for(int k = 0; k < kPatternCount; k++) {
+            int loopCount = (kSamplingSize > 0) ? kSamplingSize : kPatternCount;
+            for(int k = 0; k < loopCount; k++) {
+                int patternIdx = (kSamplingSize > 0) ? kSampledSites[k] : k;
 
-                const int stateChild = statesChild[k];  // DISCUSSION PT: Does it make sense to change the order of the partials,
+                const int stateChild = statesChild[patternIdx];  // DISCUSSION PT: Does it make sense to change the order of the partials,
                 // so we can interchange the patterCount and categoryCount loop order?
                 int w =  l * kMatrixSize;
                 for(int i = 0; i < kStateCount; i++) {
@@ -4372,7 +4565,9 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogLikelihoods(const int parIndex
         for(int l = 0; l < kCategoryCount; l++) {
             int u = 0;
             const REALTYPE weight = wt[l];
-            for(int k = 0; k < kPatternCount; k++) {
+            int loopCount = (kSamplingSize > 0) ? kSamplingSize : kPatternCount;
+            for(int k = 0; k < loopCount; k++) {
+                int patternIdx = (kSamplingSize > 0) ? kSampledSites[k] : k;
                 int w = l * kMatrixSize;
                 const REALTYPE* partialsChildPtr = &partialsChild[v];
                 for(int i = 0; i < kStateCount; i++) {
@@ -4896,9 +5091,11 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogLikelihoodsFirstDeriv(const in
         for(int l = 0; l < kCategoryCount; l++) {
             int u = 0; // Index in resulting product-partials (summed over categories)
             const REALTYPE weight = wt[l];
-            for(int k = 0; k < kPatternCount; k++) {
+            int loopCount = (kSamplingSize > 0) ? kSamplingSize : kPatternCount;
+            for(int k = 0; k < loopCount; k++) {
+                int patternIdx = (kSamplingSize > 0) ? kSampledSites[k] : k;
 
-                const int stateChild = statesChild[k];  // DISCUSSION PT: Does it make sense to change the order of the partials,
+                const int stateChild = statesChild[patternIdx];  // DISCUSSION PT: Does it make sense to change the order of the partials,
                 // so we can interchange the patterCount and categoryCount loop order?
                 int w =  l * kMatrixSize;
                 for(int i = 0; i < kStateCount; i++) {
@@ -4920,7 +5117,9 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogLikelihoodsFirstDeriv(const in
         for(int l = 0; l < kCategoryCount; l++) {
             int u = 0;
             const REALTYPE weight = wt[l];
-            for(int k = 0; k < kPatternCount; k++) {
+            int loopCount = (kSamplingSize > 0) ? kSamplingSize : kPatternCount;
+            for(int k = 0; k < loopCount; k++) {
+                int patternIdx = (kSamplingSize > 0) ? kSampledSites[k] : k;
                 int w = l * kMatrixSize;
                 for(int i = 0; i < kStateCount; i++) {
                     double sumOverJ = 0.0;
@@ -4944,7 +5143,9 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogLikelihoodsFirstDeriv(const in
     }
 
     int u = 0;
-    for(int k = 0; k < kPatternCount; k++) {
+    int loopCount = (kSamplingSize > 0) ? kSamplingSize : kPatternCount;
+    for(int k = 0; k < loopCount; k++) {
+        int patternIdx = (kSamplingSize > 0) ? kSampledSites[k] : k;
         REALTYPE sumOverI = 0.0;
         REALTYPE sumOverID1 = 0.0;
         for(int i = 0; i < kStateCount; i++) {
@@ -5015,9 +5216,11 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogLikelihoodsSecondDeriv(const i
         for(int l = 0; l < kCategoryCount; l++) {
             int u = 0; // Index in resulting product-partials (summed over categories)
             const REALTYPE weight = wt[l];
-            for(int k = 0; k < kPatternCount; k++) {
+            int loopCount = (kSamplingSize > 0) ? kSamplingSize : kPatternCount;
+            for(int k = 0; k < loopCount; k++) {
+                int patternIdx = (kSamplingSize > 0) ? kSampledSites[k] : k;
 
-                const int stateChild = statesChild[k];  // DISCUSSION PT: Does it make sense to change the order of the partials,
+                const int stateChild = statesChild[patternIdx];  // DISCUSSION PT: Does it make sense to change the order of the partials,
                 // so we can interchange the patterCount and categoryCount loop order?
                 int w =  l * kMatrixSize;
                 for(int i = 0; i < kStateCount; i++) {
@@ -5040,7 +5243,9 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogLikelihoodsSecondDeriv(const i
         for(int l = 0; l < kCategoryCount; l++) {
             int u = 0;
             const REALTYPE weight = wt[l];
-            for(int k = 0; k < kPatternCount; k++) {
+            int loopCount = (kSamplingSize > 0) ? kSamplingSize : kPatternCount;
+            for(int k = 0; k < loopCount; k++) {
+                int patternIdx = (kSamplingSize > 0) ? kSampledSites[k] : k;
                 int w = l * kMatrixSize;
                 for(int i = 0; i < kStateCount; i++) {
                     double sumOverJ = 0.0;
@@ -5067,7 +5272,9 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogLikelihoodsSecondDeriv(const i
     }
 
     int u = 0;
-    for(int k = 0; k < kPatternCount; k++) {
+    int loopCount = (kSamplingSize > 0) ? kSamplingSize : kPatternCount;
+    for(int k = 0; k < loopCount; k++) {
+        int patternIdx = (kSamplingSize > 0) ? kSampledSites[k] : k;
         REALTYPE sumOverI = 0.0;
         REALTYPE sumOverID1 = 0.0;
         REALTYPE sumOverID2 = 0.0;
@@ -5078,27 +5285,37 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogLikelihoodsSecondDeriv(const i
             u++;
         }
 
-        outLogLikelihoodsTmp[k] = log(sumOverI);
-        outFirstDerivativesTmp[k] = sumOverID1 / sumOverI;
-        outSecondDerivativesTmp[k] = sumOverID2 / sumOverI - outFirstDerivativesTmp[k] * outFirstDerivativesTmp[k];
-    }
-
-
-    if (scalingFactorsIndex != BEAGLE_OP_NONE) {
-        const REALTYPE* scalingFactors = gScaleBuffers[scalingFactorsIndex];
-        for(int k=0; k < kPatternCount; k++)
-            outLogLikelihoodsTmp[k] += scalingFactors[k];
+        if (scalingFactorsIndex != BEAGLE_OP_NONE) {
+            REALTYPE* scalingFactors = gScaleBuffers[scalingFactorsIndex];
+            REALTYPE scaleFactor = scalingFactors[patternIdx];
+            outLogLikelihoodsTmp[patternIdx] = log(sumOverI);
+            outFirstDerivativesTmp[patternIdx] = sumOverID1 / sumOverI;
+            outSecondDerivativesTmp[patternIdx] = sumOverID2 / sumOverI - outFirstDerivativesTmp[patternIdx] * outFirstDerivativesTmp[patternIdx];
+            outLogLikelihoodsTmp[patternIdx] += scaleFactor;
+        } else {
+            outLogLikelihoodsTmp[patternIdx] = log(sumOverI);
+            outFirstDerivativesTmp[patternIdx] = sumOverID1 / sumOverI;
+            outSecondDerivativesTmp[patternIdx] = sumOverID2 / sumOverI - outFirstDerivativesTmp[patternIdx] * outFirstDerivativesTmp[patternIdx];
+        }
     }
 
     *outSumLogLikelihood = 0.0;
     *outSumFirstDerivative = 0.0;
     *outSumSecondDerivative = 0.0;
-    for (int i = 0; i < kPatternCount; i++) {
-        *outSumLogLikelihood += outLogLikelihoodsTmp[i] * gPatternWeights[i];
 
-        *outSumFirstDerivative += outFirstDerivativesTmp[i] * gPatternWeights[i];
-
-        *outSumSecondDerivative += outSecondDerivativesTmp[i] * gPatternWeights[i];
+    if (kSamplingSize > 0) {
+        for (int i = 0; i < kSamplingSize; i++) {
+            int patternIdx = kSampledSites[i];
+            *outSumLogLikelihood += outLogLikelihoodsTmp[patternIdx] * gPatternWeights[patternIdx];
+            *outSumFirstDerivative += outFirstDerivativesTmp[patternIdx] * gPatternWeights[patternIdx];
+            *outSumSecondDerivative += outSecondDerivativesTmp[patternIdx] * gPatternWeights[patternIdx];
+        }
+    } else {
+        for (int i = 0; i < kPatternCount; i++) {
+            *outSumLogLikelihood += outLogLikelihoodsTmp[i] * gPatternWeights[i];
+            *outSumFirstDerivative += outFirstDerivativesTmp[i] * gPatternWeights[i];
+            *outSumSecondDerivative += outSecondDerivativesTmp[i] * gPatternWeights[i];
+        }
     }
 
     if (*outSumLogLikelihood != *outSumLogLikelihood)
@@ -5343,7 +5560,8 @@ void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcStatesStates(REALTYPE* destP,
                                                          const int* states2,
                                                          const REALTYPE* matrices2,
                                                          int startPattern,
-                                                         int endPattern) {
+                                                         int endPattern,
+                                                         bool subsampling) {
 
 #pragma omp parallel for num_threads(kCategoryCount)
     for (int l = 0; l < kCategoryCount; l++) {
@@ -5417,7 +5635,8 @@ void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcStatesPartials(REALTYPE* destP,
                                                            const REALTYPE* partials2,
                                                            const REALTYPE* matrices2,
                                                            int startPattern,
-                                                           int endPattern) {
+                                                           int endPattern,
+                                                           bool subsampling) {
 
     int matrixIncr = kStateCount;
 

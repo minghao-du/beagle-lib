@@ -596,25 +596,25 @@ BEAGLE_DLLEXPORT int beagleSetCategoryRatesWithIndex(int instance,
                                                      int categoryRatesIndex,
                                                      const double* inCategoryRates);
 
-/**
- * @brief Set pattern weights
- *
- * This function sets the vector of pattern weights for an instance.
- *
- * @param instance              Instance number (input)
- * @param inPatternWeights      Array containing patternCount weights (input)
- *
- * @return error code
- */
-typedef int (BEAGLE_OP_STATUS *beagleSetPatternWeights_t)(int instance,
-                                                     const double* inPatternWeights);
+// /**
+//  * @brief Set pattern weights
+//  *
+//  * This function sets the vector of pattern weights for an instance.
+//  *
+//  * @param instance              Instance number (input)
+//  * @param inPatternWeights      Array containing patternCount weights (input)
+//  *
+//  * @return error code
+//  */
+// typedef int (BEAGLE_OP_STATUS *beagleSetPatternWeights_t)(int instance,
+//                                                      const double* inPatternWeights);
 
-typedef int (BEAGLE_OP_STATUS *beagleSetSamplingSize_t)(int instance,
-                                                     int samplingSize);
+// typedef int (BEAGLE_OP_STATUS *beagleSetSamplingSize_t)(int instance,
+//                                                      int samplingSize);
 
-typedef int (BEAGLE_OP_STATUS *beagleSetPatternPartitions_t)(int instance,
-                                                        int partitionCount,
-                                                        const int* inPatternPartitions);
+// typedef int (BEAGLE_OP_STATUS *beagleSetPatternPartitions_t)(int instance,
+//                                                         int partitionCount,
+//                                                         const int* inPatternPartitions);
 
 /**
  * @brief Set the number of patterns to subsample

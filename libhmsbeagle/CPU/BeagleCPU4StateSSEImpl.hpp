@@ -144,7 +144,8 @@ void BeagleCPU4StateSSEImpl<BEAGLE_CPU_4_SSE_DOUBLE>::calcStatesStates(double* d
                                                                        const int* states_r,
                                                                        const double* matrices_r,
                                                                        int startPattern,
-                                                                       int endPattern) {
+                                                                       int endPattern,
+                                                                       bool subsampling) {
 
     int patternDefficit = kPatternCount + kExtraPatterns - endPattern;
 
@@ -157,14 +158,25 @@ void BeagleCPU4StateSSEImpl<BEAGLE_CPU_4_SSE_DOUBLE>::calcStatesStates(double* d
       destPvec += startPattern*2;
     	SSE_PREFETCH_MATRICES(matrices_q + w, matrices_r + w, vu_mq, vu_mr);
 
-        for (int k = startPattern; k < endPattern; k++) {
+        if (subsampling) {
+            for (int i = 0; i < kSamplingSize; i++) {
+                int k = kSampledSites[i];
+                const int state_q = states_q[k];
+                const int state_r = states_r[k];
 
-            const int state_q = states_q[k];
-            const int state_r = states_r[k];
+                destPvec[k*2] = VEC_MULT(vu_mq[state_q][0].vx, vu_mr[state_r][0].vx);
+                destPvec[k*2+1] = VEC_MULT(vu_mq[state_q][1].vx, vu_mr[state_r][1].vx);
+            }
+        } else {
+            for (int k = startPattern; k < endPattern; k++) {
 
-            *destPvec++ = VEC_MULT(vu_mq[state_q][0].vx, vu_mr[state_r][0].vx);
-            *destPvec++ = VEC_MULT(vu_mq[state_q][1].vx, vu_mr[state_r][1].vx);
+                const int state_q = states_q[k];
+                const int state_r = states_r[k];
 
+                *destPvec++ = VEC_MULT(vu_mq[state_q][0].vx, vu_mr[state_r][0].vx);
+                *destPvec++ = VEC_MULT(vu_mq[state_q][1].vx, vu_mr[state_r][1].vx);
+
+            }
         }
 
         w += OFFSET*4;
@@ -187,7 +199,8 @@ void BeagleCPU4StateSSEImpl<BEAGLE_CPU_4_SSE_DOUBLE>::calcStatesPartials(double*
                                                                          const double* partials_r,
                                                                          const double* matrices_r,
                                                                          int startPattern,
-                                                                         int endPattern) {
+                                                                         int endPattern,
+                                                                         bool subsampling) {
 
     int patternDefficit = kPatternCount + kExtraPatterns - endPattern;
 
@@ -203,25 +216,46 @@ void BeagleCPU4StateSSEImpl<BEAGLE_CPU_4_SSE_DOUBLE>::calcStatesPartials(double*
       v += startPattern*4;
     	SSE_PREFETCH_MATRICES(matrices_q + w, matrices_r + w, vu_mq, vu_mr);
 
-        for (int k = startPattern; k < endPattern; k++) {
+        if (subsampling) {
+            for (int i = 0; i < kSamplingSize; i++) {
+                int k = kSampledSites[i];
+                const int state_q = states_q[k];
+                V_Real vp0, vp1, vp2, vp3;
+                SSE_PREFETCH_PARTIALS(vp,partials_r,k*4);
 
-            const int state_q = states_q[k];
-            V_Real vp0, vp1, vp2, vp3;
-            SSE_PREFETCH_PARTIALS(vp,partials_r,v);
+                destr_01 = VEC_MULT(vp0, vu_mr[0][0].vx);
+                destr_01 = VEC_MADD(vp1, vu_mr[1][0].vx, destr_01);
+                destr_01 = VEC_MADD(vp2, vu_mr[2][0].vx, destr_01);
+                destr_01 = VEC_MADD(vp3, vu_mr[3][0].vx, destr_01);
+                destr_23 = VEC_MULT(vp0, vu_mr[0][1].vx);
+                destr_23 = VEC_MADD(vp1, vu_mr[1][1].vx, destr_23);
+                destr_23 = VEC_MADD(vp2, vu_mr[2][1].vx, destr_23);
+                destr_23 = VEC_MADD(vp3, vu_mr[3][1].vx, destr_23);
 
-			destr_01 = VEC_MULT(vp0, vu_mr[0][0].vx);
-			destr_01 = VEC_MADD(vp1, vu_mr[1][0].vx, destr_01);
-			destr_01 = VEC_MADD(vp2, vu_mr[2][0].vx, destr_01);
-			destr_01 = VEC_MADD(vp3, vu_mr[3][0].vx, destr_01);
-			destr_23 = VEC_MULT(vp0, vu_mr[0][1].vx);
-			destr_23 = VEC_MADD(vp1, vu_mr[1][1].vx, destr_23);
-			destr_23 = VEC_MADD(vp2, vu_mr[2][1].vx, destr_23);
-			destr_23 = VEC_MADD(vp3, vu_mr[3][1].vx, destr_23);
+                destPvec[k*2] = VEC_MULT(vu_mq[state_q][0].vx, destr_01);
+                destPvec[k*2+1] = VEC_MULT(vu_mq[state_q][1].vx, destr_23);
+            }
+        } else {
+            for (int k = startPattern; k < endPattern; k++) {
 
-            *destPvec++ = VEC_MULT(vu_mq[state_q][0].vx, destr_01);
-            *destPvec++ = VEC_MULT(vu_mq[state_q][1].vx, destr_23);
+                const int state_q = states_q[k];
+                V_Real vp0, vp1, vp2, vp3;
+                SSE_PREFETCH_PARTIALS(vp,partials_r,v);
 
-            v += 4;
+                destr_01 = VEC_MULT(vp0, vu_mr[0][0].vx);
+                destr_01 = VEC_MADD(vp1, vu_mr[1][0].vx, destr_01);
+                destr_01 = VEC_MADD(vp2, vu_mr[2][0].vx, destr_01);
+                destr_01 = VEC_MADD(vp3, vu_mr[3][0].vx, destr_01);
+                destr_23 = VEC_MULT(vp0, vu_mr[0][1].vx);
+                destr_23 = VEC_MADD(vp1, vu_mr[1][1].vx, destr_23);
+                destr_23 = VEC_MADD(vp2, vu_mr[2][1].vx, destr_23);
+                destr_23 = VEC_MADD(vp3, vu_mr[3][1].vx, destr_23);
+
+                *destPvec++ = VEC_MULT(vu_mq[state_q][0].vx, destr_01);
+                *destPvec++ = VEC_MULT(vu_mq[state_q][1].vx, destr_23);
+
+                v += 4;
+            }
         }
         w += OFFSET*4;
         if (kExtraPatterns) {

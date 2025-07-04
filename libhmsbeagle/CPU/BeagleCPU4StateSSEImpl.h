@@ -156,6 +156,8 @@ protected:
     using BeagleCPUImpl<BEAGLE_CPU_4_SSE_DOUBLE>::grandDenominatorDerivTmp;
     using BeagleCPUImpl<BEAGLE_CPU_4_SSE_DOUBLE>::grandNumeratorDerivTmp;
     using BeagleCPUImpl<BEAGLE_CPU_4_SSE_DOUBLE>::accumulateDerivatives;
+    using BeagleCPUImpl<BEAGLE_CPU_4_SSE_DOUBLE>::kSamplingSize;
+    using BeagleCPUImpl<BEAGLE_CPU_4_SSE_DOUBLE>::kSampledSites;
 
 public:
     virtual const char* getName();
@@ -192,7 +194,8 @@ private:
                                   const int* states2,
                                   const double* matrices2,
                                   int startPattern,
-                                  int endPattern);
+                                  int endPattern,
+                                  bool subsampling = false);
 
     virtual void calcStatesPartials(double* destP,
                                     const int* states1,
@@ -200,7 +203,8 @@ private:
                                     const double* __restrict partials2,
                                     const double* __restrict matrices2,
                                     int startPattern,
-                                    int endPattern);
+                                    int endPattern,
+                                    bool subsampling = false);
 
     virtual void calcStatesPartialsFixedScaling(double* destP,
                                                 const int* states1,
