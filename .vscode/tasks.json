@@ -4,7 +4,8 @@
         {
             "label": "Build hmctest",
             "type": "shell",
-            "command": "cd ${workspaceFolder}/build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DBEAGLE_DEBUG_VALUES=ON -DBUILD_OPENMP=OFF && make hmctest",
+            // --- 修改了这一行 ---
+            "command": "mkdir -p build && cd build && cmake .. -DCMAKE_C_COMPILER=/usr/local/opt/llvm/bin/clang -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++ -DCMAKE_BUILD_TYPE=Debug -DBEAGLE_DEBUG_VALUES=ON -DBEAGLE_DEBUG_FLOW=ON -DBUILD_OPENMP=ON && make hmctest VERBOSE=1",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -16,27 +17,28 @@
         {
             "label": "Build stochastictest",
             "type": "shell",
-            "command": "cd ${workspaceFolder}/build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DBEAGLE_DEBUG_VALUES=ON -DBUILD_OPENMP=OFF && make stochastictest",
+            // --- 修改了这一行 ---
+            "command": "mkdir -p build && cd build && cmake .. -DCMAKE_C_COMPILER=/usr/local/opt/llvm/bin/clang -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++ -DCMAKE_BUILD_TYPE=Debug -DBEAGLE_DEBUG_VALUES=ON -DBEAGLE_DEBUG_FLOW=ON -DBUILD_OPENMP=ON && make stochastictest VERBOSE=1",
             "group": "build",
             "problemMatcher": [
                 "$gcc"
             ]
         },
-        {
-            "label": "CMake Configure",
-            "type": "shell",
-            "command": "cd ${workspaceFolder} && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DBEAGLE_DEBUG_VALUES=ON",
-            "group": "build",
-            "problemMatcher": []
-        },
-        {
-            "label": "Full Rebuild",
-            "type": "shell",
-            "command": "cd ${workspaceFolder} && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DBEAGLE_DEBUG_VALUES=ON && make",
-            "group": "build",
-            "problemMatcher": [
-                "$gcc"
-            ]
-        }
+        // {
+        //     "label": "CMake Configure",
+        //     "type": "shell",
+        //     "command": "cd ${workspaceFolder} && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DBEAGLE_DEBUG_VALUES=ON -DCMAKE_CXX_STANDARD=17",
+        //     "group": "build",
+        //     "problemMatcher": []
+        // },
+        // {
+        //     "label": "Full Rebuild",
+        //     "type": "shell",
+        //     "command": "cd ${workspaceFolder} && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DBEAGLE_DEBUG_VALUES=ON -DCMAKE_CXX_STANDARD=17 && make",
+        //     "group": "build",
+        //     "problemMatcher": [
+        //         "$gcc"
+        //     ]
+        // }
     ]
 }

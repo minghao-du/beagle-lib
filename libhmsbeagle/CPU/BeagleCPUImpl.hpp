@@ -638,6 +638,8 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::createInstance(int tipCount,
     mTotalIndividualsInSystem = 0;    // Initialize to 0
     mIndividualSourcePatternIndices.clear(); // Initialize as empty vector
 
+    kSamplingSize = 0;
+    kSampledSites.clear();
     g_shuffle_engine.seed(rd_shuffle_device());
 
     return BEAGLE_SUCCESS;
@@ -970,29 +972,29 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::setPatternWeights(const double* inPattern
 BEAGLE_CPU_TEMPLATE
 int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::resampleIndividuals() {
 
-    // Shuffle this list to randomize individuals
-    // todo: random seed?
-    std::shuffle(mIndividualSourcePatternIndices.begin(), mIndividualSourcePatternIndices.end(), g_shuffle_engine);
+//     // Shuffle this list to randomize individuals
+//     // todo: random seed?
+//     std::shuffle(mIndividualSourcePatternIndices.begin(), mIndividualSourcePatternIndices.end(), g_shuffle_engine);
 
-    // Clear previous results and store new counts of individuals sampled per pattern
-    mSubsampledPatternIndices.clear();
-    mSubsampledPatternWeights.clear(); 
+//     // Clear previous results and store new counts of individuals sampled per pattern
+//     mSubsampledPatternIndices.clear();
+//     mSubsampledPatternWeights.clear(); 
     
-    std::map<int, int> pattern_actual_sample_counts; // Key: pattern_index, Value: count of individuals sampled
-    // Select the first mSubsampleNumber from the shuffled list
-    // Ensure we don't try to sample more than available if mIndividualSourcePatternIndices is smaller
-    // (e.g. if totalIndividualsInSystem was less than mSubsampleNumber, though setSubsampling should prevent this)
-    int individualsToSample = mSubsampleNumber;
-    for (int k = 0; k < individualsToSample; ++k) {
-        pattern_actual_sample_counts[mIndividualSourcePatternIndices[k]]++;
-    }
+//     std::map<int, int> pattern_actual_sample_counts; // Key: pattern_index, Value: count of individuals sampled
+//     // Select the first mSubsampleNumber from the shuffled list
+//     // Ensure we don't try to sample more than available if mIndividualSourcePatternIndices is smaller
+//     // (e.g. if totalIndividualsInSystem was less than mSubsampleNumber, though setSubsampling should prevent this)
+//     int individualsToSample = mSubsampleNumber;
+//     for (int k = 0; k < individualsToSample; ++k) {
+//         pattern_actual_sample_counts[mIndividualSourcePatternIndices[k]]++;
+//     }
 
-    // Populate the output vectors (mSubsampledPatternIndices and mSubsampledPatternWeights)
-    // The map iteration ensures that pattern indices are sorted.
-    for (const auto& pair : pattern_actual_sample_counts) {
-        mSubsampledPatternIndices.push_back(pair.first);
-        mSubsampledPatternWeights.push_back(static_cast<double>(pair.second));
-    }
+//     // Populate the output vectors (mSubsampledPatternIndices and mSubsampledPatternWeights)
+//     // The map iteration ensures that pattern indices are sorted.
+//     for (const auto& pair : pattern_actual_sample_counts) {
+//         mSubsampledPatternIndices.push_back(pair.first);
+//         mSubsampledPatternWeights.push_back(static_cast<double>(pair.second));
+//     }
 
     return BEAGLE_SUCCESS;
 }
@@ -1071,9 +1073,22 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::setSamplingSize(int samplingSize) {
         return BEAGLE_SUCCESS;
     }
 
-    if (samplingSize > kPatternCount) {
-        return BEAGLE_ERROR_OUT_OF_RANGE; // Cannot sample more than available patterns
+    // Todo: Check if samplingSize is larger than total characters?
+    // if (samplingSize > kPatternCount) {
+    //     return BEAGLE_ERROR_OUT_OF_RANGE; 
+    // }
+
+    if (gPatternWeights == NULL) {
+        return BEAGLE_ERROR_GENERAL;
     }
+
+    // double sum_of_weights = 0.0;
+    // for (int i = 0; i < kPatternCount; ++i) {
+    //     if (gPatternWeights[i] < 0.0) {
+    //         return BEAGLE_ERROR_GENERAL;
+    //     }
+    //     sum_of_weights += gPatternWeights[i];
+    // }
 
     kSamplingSize = samplingSize;
     kSampledSites.resize(kSamplingSize);

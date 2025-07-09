@@ -13,6 +13,7 @@
 #include <libhmsbeagle/BeagleImpl.h>
 #include <cmath>
 #include <vector>
+#include <map>
 
 //#define JC
 
@@ -35,75 +36,30 @@ char *human = (char*)"GAGAAATATGTCTGATAAAAGAGTTACTTTGATAGAGTAAATAATAGGAGCTTAAACC
 char *chimp = (char*)"GGGAAATATGTCTGATAAAAGAATTACTTTGATAGAGTAAATAATAGGAGTTCAAATCCCCTTATTTCTACTAGGACTATAAGAATCGAACTCATCCCTGAGAATCCAAAATTCTCCGTGCCACCTATCACACCCCATCCTAAGTAAGGTCAGCTAAATAAGCTATCGGGCCCATACCCCGAAAATGTTGGTTACACCCTTCCCGTACTAAGAAATTTAGGTTAAGCACAGACCAAGAGCCTTCAAAGCCCTCAGCAAGTTA-CAATACTTAATTTCTGTAAGGACTGCAAAACCCCACTCTGCATCAACTGAACGCAAATCAGCCACTTTAATTAAGCTAAGCCCTTCTAGATTAATGGGACTTAAACCCACAAACATTTAGTTAACAGCTAAACACCCTAATCAAC-TGGCTTCAATCTAAAGCCCCGGCAGG-TTTGAAGCTGCTTCTTCGAATTTGCAATTCAATATGAAAA-TCACCTCAGAGCTTGGTAAAAAGAGGCTTAACCCCTGTCTTTAGATTTACAGTCCAATGCTTCA-CTCAGCCATTTTACCACAAAAAAGGAAGGAATCGAACCCCCTAAAGCTGGTTTCAAGCCAACCCCATGACCTCCATGACTTTTTCAAAAGATATTAGAAAAACTATTTCATAACTTTGTCAAAGTTAAATTACAGGTT-AACCCCCGTATATCTTA-CACTGTAAAGCTAACCTAGCATTAACCTTTTAAGTTAAAGATTAAGAGGACCGACACCTCTTTACAGTGA";
 char *gorilla = (char*)"AGAAAATATGTCTGATAAAAGAGTTACTTTGATAGAGTAAATAATAGAGGTTTAAACCCCCTTATTTCTACTAGGACTATGAGAATTGAACCCATCCCTGAGAATCCAAAATTCTCCGTGCCACCTGTCACACCCCATCCTAAGTAAGGTCAGCTAAATAAGCTATCGGGCCCATACCCCGAAAATGTTGGTCACATCCTTCCCGTACTAAGAAATTTAGGTTAAACATAGACCAAGAGCCTTCAAAGCCCTTAGTAAGTTA-CAACACTTAATTTCTGTAAGGACTGCAAAACCCTACTCTGCATCAACTGAACGCAAATCAGCCACTTTAATTAAGCTAAGCCCTTCTAGATCAATGGGACTCAAACCCACAAACATTTAGTTAACAGCTAAACACCCTAGTCAAC-TGGCTTCAATCTAAAGCCCCGGCAGG-TTTGAAGCTGCTTCTTCGAATTTGCAATTCAATATGAAAT-TCACCTCGGAGCTTGGTAAAAAGAGGCCCAGCCTCTGTCTTTAGATTTACAGTCCAATGCCTTA-CTCAGCCATTTTACCACAAAAAAGGAAGGAATCGAACCCCCCAAAGCTGGTTTCAAGCCAACCCCATGACCTTCATGACTTTTTCAAAAGATATTAGAAAAACTATTTCATAACTTTGTCAAGGTTAAATTACGGGTT-AAACCCCGTATATCTTA-CACTGTAAAGCTAACCTAGCGTTAACCTTTTAAGTTAAAGATTAAGAGTATCGGCACCTCTTTGCAGTGA";
 
-int* getStates(char *sequence, int repeats) {
+int* getStates(char *sequence) {
 	int n = strlen(sequence);
-	int *states = (int*) malloc(sizeof(int) * n * repeats);
+	int *states = (int*) malloc(sizeof(int) * n);
 
-	int k = 0;
-	for (int r = 0; r < repeats; ++r) {
-        for (int i = 0; i < n; i++) {
-            switch (sequence[i]) {
-                case 'A':
-                    states[k++] = 0;
-                    break;
-                case 'C':
-                    states[k++] = 1;
-                    break;
-                case 'G':
-                    states[k++] = 2;
-                    break;
-                case 'T':
-                    states[k++] = 3;
-                    break;
-                default:
-                    states[k++] = 4;
-                    break;
-            }
-        }
-    }
-	return states;
-}
-
-double* getPartials(char *sequence, int repeats) {
-	int n = strlen(sequence);
-	double *partials = (double*)malloc(sizeof(double) * n * 4);
-
-    int k = 0;
 	for (int i = 0; i < n; i++) {
 		switch (sequence[i]) {
 			case 'A':
-				partials[k++] = 1;
-				partials[k++] = 0;
-				partials[k++] = 0;
-				partials[k++] = 0;
+				states[i] = 0;
 				break;
 			case 'C':
-				partials[k++] = 0;
-				partials[k++] = 1;
-				partials[k++] = 0;
-				partials[k++] = 0;
+				states[i] = 1;
 				break;
 			case 'G':
-				partials[k++] = 0;
-				partials[k++] = 0;
-				partials[k++] = 1;
-				partials[k++] = 0;
+				states[i] = 2;
 				break;
 			case 'T':
-				partials[k++] = 0;
-				partials[k++] = 0;
-				partials[k++] = 0;
-				partials[k++] = 1;
+				states[i] = 3;
 				break;
 			default:
-				partials[k++] = 1;
-				partials[k++] = 1;
-				partials[k++] = 1;
-				partials[k++] = 1;
+				states[i] = 4; // 'N' or '-'
 				break;
 		}
 	}
-	return partials;
+	return states;
 }
 
 void printFlags(long inFlags) {
@@ -162,19 +118,7 @@ int main( int argc, const char* argv[] )
     int nRepeats = 1;
 
     // get the number of site patterns
-	int nPatterns = strlen(human) * nRepeats;
-
-    // MODIFICATION: Add a boolean to control sampling and define the sample size.
-    bool useSampling = true; // Set to true to enable random sampling.
-    int samplingSize = 0;
-    if (useSampling) {
-        samplingSize = nPatterns / 2; // Sample half of the patterns.
-        if (samplingSize == 0 && nPatterns > 0) {
-            samplingSize = 1; // Ensure we sample at least one site.
-        }
-        fprintf(stdout, "Random sampling enabled: will sample %d of %d patterns.\n\n", samplingSize, nPatterns);
-    }
-
+	// int nPatterns = strlen(human) * nRepeats;
 
     // change # rate category to 2
 //    int rateCategoryCount = 4;
@@ -195,6 +139,50 @@ int main( int argc, const char* argv[] )
             }
         }
     }
+
+    // --- Identify unique patterns and calculate their weights ---
+
+    // 1. Convert all sequences to integer states
+    int totalSites = strlen(human);
+    int* humanStatesAll = getStates(human);
+    int* chimpStatesAll = getStates(chimp);
+    int* gorillaStatesAll = getStates(gorilla);
+
+    // 2. Use std::map to count unique patterns and their weights
+    //    The key is the site pattern (e.g., {A,C,G} -> {0,1,2}), and the value is the number of times the pattern occurs.
+    std::map<std::vector<int>, double> patternCounts;
+    for (int i = 0; i < totalSites; i++) {
+        std::vector<int> currentPattern = {humanStatesAll[i], chimpStatesAll[i], gorillaStatesAll[i]};
+        patternCounts[currentPattern]++;
+    }
+
+    // 3. Convert the data in the map into the flat array format required by BEAGLE
+    int nPatterns = patternCounts.size(); // Number of unique patterns
+    
+    int* tipStatesHuman = (int*)malloc(sizeof(int) * nPatterns);
+    int* tipStatesChimp = (int*)malloc(sizeof(int) * nPatterns);
+    int* tipStatesGorilla = (int*)malloc(sizeof(int) * nPatterns);
+    double* patternWeights = (double*)malloc(sizeof(double) * nPatterns);
+
+    int patternIndex = 0;
+    for (auto const& pair : patternCounts) {
+        const std::vector<int>& pattern = pair.first;
+        double count = pair.second;
+
+        tipStatesHuman[patternIndex] = pattern[0];
+        tipStatesChimp[patternIndex] = pattern[1];
+        tipStatesGorilla[patternIndex] = pattern[2];
+        patternWeights[patternIndex] = count;
+        patternIndex++;
+    }
+
+    fprintf(stdout, "Total sequence length is %d sites.\n", totalSites);
+    fprintf(stdout, "Found %d unique site patterns.\n\n", nPatterns);
+
+    // 释放临时的完整状态数组
+    free(humanStatesAll);
+    free(chimpStatesAll);
+    free(gorillaStatesAll);
 
     BeagleInstanceDetails instDetails;
 
@@ -248,33 +236,19 @@ int main( int argc, const char* argv[] )
     fprintf(stdout, "\tImpl Desc : %s\n", instDetails.implDescription);
     fprintf(stdout, "\n");
 
+    // 5. Pass unique Pattern data and weights to BEAGLE
     if (useTipStates) {
         // set the sequences for each tip using state likelihood arrays
-        int *humanStates = getStates(human, nRepeats);
-        int *chimpStates = getStates(chimp, nRepeats);
-        int *gorillaStates = getStates(gorilla, nRepeats);
+        beagleSetTipStates(instance, 0, tipStatesHuman);
+        beagleSetTipStates(instance, 1, tipStatesChimp);
+        beagleSetTipStates(instance, 2, tipStatesGorilla);
 
-        beagleSetTipStates(instance, 0, humanStates);
-        beagleSetTipStates(instance, 1, chimpStates);
-        beagleSetTipStates(instance, 2, gorillaStates);
+        beagleSetPatternWeights(instance, patternWeights);
 
-        free(humanStates);
-        free(chimpStates);
-        free(gorillaStates);
-
-    } else {
-        // set the sequences for each tip using partial likelihood arrays
-        double *humanPartials = getPartials(human, nRepeats);
-        double *chimpPartials = getPartials(chimp, nRepeats);
-        double *gorillaPartials = getPartials(gorilla, nRepeats);
-
-        beagleSetTipPartials(instance, 0, humanPartials);
-        beagleSetTipPartials(instance, 1, chimpPartials);
-        beagleSetTipPartials(instance, 2, gorillaPartials);
-
-        free(humanPartials);
-        free(chimpPartials);
-        free(gorillaPartials);
+        // Release the data array prepared for BEAGLE
+        free(tipStatesHuman);
+        free(tipStatesChimp);
+        free(tipStatesGorilla);
     }
 
 #ifdef _WIN32
@@ -294,10 +268,15 @@ int main( int argc, const char* argv[] )
 
 	beagleSetCategoryRates(instance, &rates[0]);
 
-	double* patternWeights = (double*) malloc(sizeof(double) * nPatterns);
-
-    for (int i = 0; i < nPatterns; i++) {
-        patternWeights[i] = 1.0;
+    // MODIFICATION: Add a boolean to control sampling and define the sample size.
+    bool useSampling = true; // Set to true to enable random sampling.
+    int samplingSize = 0;
+    if (useSampling) {
+        samplingSize = totalSites / 2; // Sample half of the patterns.
+        if (samplingSize == 0 && nPatterns > 0) {
+            samplingSize = 1; // Ensure we sample at least one site.
+        }
+        fprintf(stdout, "Random sampling enabled: will sample %d of %d patterns.\n\n", samplingSize, nPatterns);
     }
 
     beagleSetPatternWeights(instance, patternWeights);
