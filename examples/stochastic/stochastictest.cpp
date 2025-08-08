@@ -284,7 +284,7 @@ int main( int argc, const char* argv[] )
     // MODIFICATION: Call beagleSetSamplingSize if sampling is enabled.
     // This must be done AFTER setting the pattern weights.
     if (useSampling) {
-        beagleSetSamplingSize(instance, samplingSize);
+        beagleSetSubsampling(instance, samplingSize);
     }
 
 
@@ -482,7 +482,7 @@ int main( int argc, const char* argv[] )
                    operations,     // eigenIndex
                    2,              // operationCount
                    BEAGLE_OP_NONE,
-                   false);          // cumulative scaling index
+                   useSampling);          // cumulative scaling index
 
     ///XJ: I decided to store the pre-order partials vector in reverse order as those of post-orders
     ///This means that the two indices to the partials of root nodes are adjacent.

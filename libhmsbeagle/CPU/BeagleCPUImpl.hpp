@@ -972,29 +972,29 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::setPatternWeights(const double* inPattern
 BEAGLE_CPU_TEMPLATE
 int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::resampleIndividuals() {
 
-//     // Shuffle this list to randomize individuals
-//     // todo: random seed?
-//     std::shuffle(mIndividualSourcePatternIndices.begin(), mIndividualSourcePatternIndices.end(), g_shuffle_engine);
+    // Shuffle this list to randomize individuals
+    // todo: random seed?
+    std::shuffle(mIndividualSourcePatternIndices.begin(), mIndividualSourcePatternIndices.end(), g_shuffle_engine);
 
-//     // Clear previous results and store new counts of individuals sampled per pattern
-//     mSubsampledPatternIndices.clear();
-//     mSubsampledPatternWeights.clear(); 
+    // Clear previous results and store new counts of individuals sampled per pattern
+    mSubsampledPatternIndices.clear();
+    mSubsampledPatternWeights.clear(); 
     
-//     std::map<int, int> pattern_actual_sample_counts; // Key: pattern_index, Value: count of individuals sampled
-//     // Select the first mSubsampleNumber from the shuffled list
-//     // Ensure we don't try to sample more than available if mIndividualSourcePatternIndices is smaller
-//     // (e.g. if totalIndividualsInSystem was less than mSubsampleNumber, though setSubsampling should prevent this)
-//     int individualsToSample = mSubsampleNumber;
-//     for (int k = 0; k < individualsToSample; ++k) {
-//         pattern_actual_sample_counts[mIndividualSourcePatternIndices[k]]++;
-//     }
+    std::map<int, int> pattern_actual_sample_counts; // Key: pattern_index, Value: count of individuals sampled
+    // Select the first mSubsampleNumber from the shuffled list
+    // Ensure we don't try to sample more than available if mIndividualSourcePatternIndices is smaller
+    // (e.g. if totalIndividualsInSystem was less than mSubsampleNumber, though setSubsampling should prevent this)
+    int individualsToSample = mSubsampleNumber;
+    for (int k = 0; k < individualsToSample; ++k) {
+        pattern_actual_sample_counts[mIndividualSourcePatternIndices[k]]++;
+    }
 
-//     // Populate the output vectors (mSubsampledPatternIndices and mSubsampledPatternWeights)
-//     // The map iteration ensures that pattern indices are sorted.
-//     for (const auto& pair : pattern_actual_sample_counts) {
-//         mSubsampledPatternIndices.push_back(pair.first);
-//         mSubsampledPatternWeights.push_back(static_cast<double>(pair.second));
-//     }
+    // Populate the output vectors (mSubsampledPatternIndices and mSubsampledPatternWeights)
+    // The map iteration ensures that pattern indices are sorted.
+    for (const auto& pair : pattern_actual_sample_counts) {
+        mSubsampledPatternIndices.push_back(pair.first);
+        mSubsampledPatternWeights.push_back(static_cast<double>(pair.second));
+    }
 
     return BEAGLE_SUCCESS;
 }
@@ -1061,6 +1061,7 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::setSubsampling(int subsampleNumber) {
     return BEAGLE_SUCCESS;
 }
 
+//  check: setSamplingSize and setSubsampling到底有什么区别，是否要合并
 BEAGLE_CPU_TEMPLATE
 int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::setSamplingSize(int samplingSize) {
     if (samplingSize < 0) {
@@ -1089,6 +1090,8 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::setSamplingSize(int samplingSize) {
     //     }
     //     sum_of_weights += gPatternWeights[i];
     // }
+
+    mIsSubsamplingEnabled = true;
 
     kSamplingSize = samplingSize;
     kSampledSites.resize(kSamplingSize);
