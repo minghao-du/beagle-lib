@@ -159,8 +159,8 @@ void BeagleCPU4StateSSEImpl<BEAGLE_CPU_4_SSE_DOUBLE>::calcStatesStates(double* d
     	SSE_PREFETCH_MATRICES(matrices_q + w, matrices_r + w, vu_mq, vu_mr);
 
         if (subsampling) {
-            for (int i = 0; i < kSamplingSize; i++) {
-                int k = kSampledSites[i];
+            for (int i = 0; i < this->mSubsampledPatternIndices.size(); i++) {
+                int k = this->mSubsampledPatternIndices[i];
                 const int state_q = states_q[k];
                 const int state_r = states_r[k];
 
@@ -217,8 +217,8 @@ void BeagleCPU4StateSSEImpl<BEAGLE_CPU_4_SSE_DOUBLE>::calcStatesPartials(double*
     	SSE_PREFETCH_MATRICES(matrices_q + w, matrices_r + w, vu_mq, vu_mr);
 
         if (subsampling) {
-            for (int i = 0; i < kSamplingSize; i++) {
-                int k = kSampledSites[i];
+            for (int i = 0; i < this->mSubsampledPatternIndices.size(); i++) {
+                int k = this->mSubsampledPatternIndices[i];
                 const int state_q = states_q[k];
                 V_Real vp0, vp1, vp2, vp3;
                 SSE_PREFETCH_PARTIALS(vp,partials_r,k*4);
