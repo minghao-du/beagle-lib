@@ -1171,7 +1171,8 @@ BEAGLE_DLLEXPORT int beagleCalculateRootLogLikelihoods(int instance,
                                       const int* stateFrequenciesIndices,
                                       const int* cumulativeScaleIndices,
                                       int count,
-                                      double* outSumLogLikelihood);
+                                      double* outSumLogLikelihood,
+                                      bool subsampling);
 
 /**
  * @brief Calculate site log likelihoods at a root node with per partition buffers

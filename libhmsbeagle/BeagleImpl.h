@@ -200,7 +200,8 @@ public:
                                             const int* stateFrequenciesIndices,
                                             const int* scalingFactorsIndices,
                                             int count,
-                                            double* outSumLogLikelihood) = 0;
+                                            double* outSumLogLikelihood,
+                                            bool subsampling) = 0;
 
     virtual int calculateRootLogLikelihoodsByPartition(const int* bufferIndices,
                                                        const int* categoryWeightsIndices,

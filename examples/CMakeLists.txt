@@ -29,6 +29,12 @@ add_executable(synthetictest
 add_executable(stochastictest
         stochastic/stochastictest.cpp)
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "Debug build detected, enabling Address Sanitizer.")
+    target_compile_options(stochastictest PRIVATE -g -fsanitize=address)
+    target_link_options(stochastictest PRIVATE -fsanitize=address) # 链接时也需要
+endif()
+
 #add_executable(complextest
 #        complextest/complextest.cpp)
 if(BEAGLE_BENCHMARK)

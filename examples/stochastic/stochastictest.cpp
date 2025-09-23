@@ -534,7 +534,8 @@ int main( int argc, const char* argv[] )
                                       &stateFrequencyIndex,                  // stateFrequencies
                                       &cumulativeScalingIndex,// cumulative scaling index
                                       1,                      // count
-                                      &logL);         // outLogLikelihoods
+                                      &logL,
+                                      useSampling);         // outLogLikelihoods
 
 
     std::vector<double> siteLogLikelihoods(nPatterns);

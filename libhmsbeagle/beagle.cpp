@@ -1585,7 +1585,8 @@ int beagleCalculateRootLogLikelihoods(int instance,
                                       const int* stateFrequenciesIndices,
                                       const int* cumulativeScaleIndices,
                                       int count,
-                                      double* outSumLogLikelihood) {
+                                      double* outSumLogLikelihood,
+                                      bool subsampling) {
     DEBUG_START_TIME();
     DEBUG_START_ENERGY();
 //    try {
@@ -1596,7 +1597,8 @@ int beagleCalculateRootLogLikelihoods(int instance,
                                                            stateFrequenciesIndices,
                                                            cumulativeScaleIndices,
                                                            count,
-                                                           outSumLogLikelihood);
+                                                           outSumLogLikelihood,
+                                                           subsampling);
         DEBUG_END_TIME();
         DEBUG_END_ENERGY();
 

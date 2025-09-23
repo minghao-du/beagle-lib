@@ -413,7 +413,8 @@ public:
                                     const int* stateFrequenciesIndices,
                                     const int* cumulativeScaleIndices,
                                     int count,
-                                    double* outSumLogLikelihood);
+                                    double* outSumLogLikelihood,
+                                    bool subsampling);
 
     int calculateRootLogLikelihoodsByPartition(const int* bufferIndices,
                                                const int* categoryWeightsIndices,
@@ -694,7 +695,8 @@ protected:
                                         const int categoryWeightsIndex,
                                         const int stateFrequenciesIndex,
                                         const int scaleBufferIndex,
-                                        double* outSumLogLikelihood);
+                                        double* outSumLogLikelihood,
+                                        bool subsampling);
 
     virtual int calcRootLogLikelihoodsPerCategory(const int bufferIndex,
                                                   const int stateFrequenciesIndex,

@@ -19,7 +19,7 @@
             "type": "shell",
             // --- 修改了这一行 ---
             // "command": "mkdir -p build && cd build && cmake .. -DCMAKE_C_COMPILER=/usr/local/opt/llvm/bin/clang -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++ -DCMAKE_BUILD_TYPE=Debug -DBEAGLE_DEBUG_VALUES=ON -DBEAGLE_DEBUG_FLOW=ON -DBUILD_OPENMP=ON && make stochastictest VERBOSE=1",
-            "command": "mkdir -p build && cd build && cmake .. -DCMAKE_C_COMPILER=/usr/local/opt/llvm/bin/clang -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_FLAGS='-fsanitize=address -g' -DCMAKE_CXX_FLAGS='-fsanitize=address -g' -DBEAGLE_DEBUG_VALUES=ON -DBEAGLE_DEBUG_FLOW=ON -DBUILD_OPENMP=ON && make stochastictest VERBOSE=1",
+            "command": "mkdir -p build && cd build && cmake .. -DCMAKE_C_COMPILER=/usr/local/opt/llvm/bin/clang -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++ -DCMAKE_BUILD_TYPE=Debug -DBEAGLE_DEBUG_VALUES=ON -DBEAGLE_DEBUG_FLOW=ON -DBUILD_OPENMP=ON && make stochastictest VERBOSE=1",
             "group": "build",
             "problemMatcher": [
                 "$gcc"

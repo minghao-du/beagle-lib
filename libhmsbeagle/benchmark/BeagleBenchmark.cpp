@@ -570,7 +570,8 @@ int benchmarkResource(int resource,
                                             stateFrequencyIndices,                 // stateFrequencies
                                             cumulativeScalingFactorIndices,
                                             eigenCount,                      // count
-                                            &logL);         // outLogLikelihoods
+                                            &logL,
+                                            false);         // outLogLikelihoods
             }
         } else {
             if (partitionCount > 1) {

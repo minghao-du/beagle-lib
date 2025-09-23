@@ -3619,7 +3619,8 @@ BEAGLE_CPU_TEMPLATE
                                                                        const int *stateFrequenciesIndices,
                                                                        const int *cumulativeScaleIndices,
                                                                        int count,
-                                                                       double *outSumLogLikelihood) {
+                                                                       double *outSumLogLikelihood,
+                                                                       bool subsampling) {
 
     if (count == 1) {
         // We treat this as a special case so that we don't have convoluted logic
@@ -3656,7 +3657,7 @@ BEAGLE_CPU_TEMPLATE
 
             if (categoryWeightsIndices[0] >= 0) {
                 return calcRootLogLikelihoods(bufferIndices[0], categoryWeightsIndices[0], stateFrequenciesIndices[0],
-                                              cumulativeScalingFactorIndex, outSumLogLikelihood);
+                                              cumulativeScalingFactorIndex, outSumLogLikelihood, subsampling);
             } else {
                 return calcRootLogLikelihoodsPerCategory(
                         bufferIndices[0], stateFrequenciesIndices[0], cumulativeScalingFactorIndex, outSumLogLikelihood);
@@ -3954,7 +3955,8 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcRootLogLikelihoods(const int bufferIn
                             const int categoryWeightsIndex,
                             const int stateFrequenciesIndex,
                             const int scalingFactorsIndex,
-                            double* outSumLogLikelihood) {
+                            double* outSumLogLikelihood,
+                            bool subsampling) {
 
     int returnCode = BEAGLE_SUCCESS;
 
