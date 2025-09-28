@@ -293,15 +293,15 @@ int main( int argc, const char* argv[] )
 	beagleSetCategoryRates(instance, &rates[0]);
 
     // MODIFICATION: Add a boolean to control sampling and define the sample size.
-    bool useSampling = false; // Set to true to enable random sampling.
-    int samplingSize = 0;
-    if (useSampling) {
-        samplingSize = totalSites / 2; // Sample half of the patterns.
-        if (samplingSize == 0 && nPatterns > 0) {
-            samplingSize = 1; // Ensure we sample at least one site.
-        }
-        fprintf(stdout, "Random sampling enabled: will sample %d of %d patterns.\n\n", samplingSize, nPatterns);
-    }
+    bool useSampling = true; // Set to true to enable random sampling.
+    int samplingSize = 5;
+    // if (useSampling) {
+    //     samplingSize = totalSites / 2; // Sample half of the patterns.
+    //     if (samplingSize == 0 && nPatterns > 0) {
+    //         samplingSize = 1; // Ensure we sample at least one site.
+    //     }
+    //     fprintf(stdout, "Random sampling enabled: will sample %d of %d patterns.\n\n", samplingSize, nPatterns);
+    // }
 
     beagleSetPatternWeights(instance, patternWeights);
     
@@ -629,28 +629,29 @@ int main( int argc, const char* argv[] )
         int postBufferIndex = 4-i;
         int preBufferIndex = 5+i;
         beagleGetPartials(instance, preBufferIndex, BEAGLE_OP_NONE, seeprePartials);
-        beagleGetPartials(instance, postBufferIndex, BEAGLE_OP_NONE, seepostPartials);
+        if (i <= 1) {
+            beagleGetPartials(instance, postBufferIndex, BEAGLE_OP_NONE, seepostPartials);
 
-        std::cout << "Post-order Partials for node " << (4 - i) << " (Buffer Index: " << postBufferIndex << "):" << std::endl;
-        int currentIndex = 0;
-        // 循环遍历每个速率类别
-        for (int cat = 0; cat < rateCategoryCount; cat++) {
-            std::cout << "  Rate Category " << cat + 1 << ":" << std::endl;
-            // 循环遍历每个序列模式 (pattern)
-            for (int pat = 0; pat < nPatterns; pat++) {
-                std::cout << "    Pattern " << pat + 1 << ": [";
-                // 循环遍历每个状态 (A, C, G, T)
-                for (int state = 0; state < stateCount; state++) {
-                    std::cout << seepostPartials[currentIndex++];
-                    if (state < stateCount - 1) {
-                        std::cout << ", ";
+            std::cout << "Post-order Partials for node " << (4 - i) << " (Buffer Index: " << postBufferIndex << "):" << std::endl;
+            int currentIndex = 0;
+            // 循环遍历每个速率类别
+            for (int cat = 0; cat < rateCategoryCount; cat++) {
+                std::cout << "  Rate Category " << cat + 1 << ":" << std::endl;
+                // 循环遍历每个序列模式 (pattern)
+                for (int pat = 0; pat < nPatterns; pat++) {
+                    std::cout << "    Pattern " << pat + 1 << ": [";
+                    // 循环遍历每个状态 (A, C, G, T)
+                    for (int state = 0; state < stateCount; state++) {
+                        std::cout << seepostPartials[currentIndex++];
+                        if (state < stateCount - 1) {
+                            std::cout << ", ";
+                        }
                     }
+                    std::cout << "]" << std::endl;
                 }
-                std::cout << "]" << std::endl;
             }
+            std::cout << "--------------------------------------------------" << std::endl;
         }
-        std::cout << "--------------------------------------------------" << std::endl;
-
 
 //        double * prePartialsPtr = seeprePartials;
         // double * postPartialsPtr = seepostPartials;
