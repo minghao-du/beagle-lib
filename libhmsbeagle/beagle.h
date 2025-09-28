@@ -922,6 +922,7 @@ typedef struct {
  * @param operations                BeagleOperation list specifying operations (input)
  * @param operationCount            Number of operations (input)
  * @param cumulativeScaleIndex      Index number of scaleBuffer to store accumulated factors (input)
+ * @param subsampling               Indicates if subsampling should be used (input, default = false)
  *
  * @return error code
  */
@@ -929,7 +930,7 @@ BEAGLE_DLLEXPORT int beagleUpdatePartials(const int instance,
                                           const BeagleOperation* operations,
                                           int operationCount,
                                           int cumulativeScaleIndex,
-                                          bool subsampling);
+                                          bool subsampling = false);
 
 /**
  * @brief Calculate or queue for calculation pre-order partials using a list of operations
@@ -1172,7 +1173,7 @@ BEAGLE_DLLEXPORT int beagleCalculateRootLogLikelihoods(int instance,
                                       const int* cumulativeScaleIndices,
                                       int count,
                                       double* outSumLogLikelihood,
-                                      bool subsampling);
+                                      bool subsampling = false);
 
 /**
  * @brief Calculate site log likelihoods at a root node with per partition buffers

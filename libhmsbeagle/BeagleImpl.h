@@ -81,8 +81,6 @@ public:
 
     virtual int setPatternWeights(const double* inPatternWeights) = 0;
 
-    virtual int setSamplingSize(int samplingSize) = 0;
-
     virtual int setSubsampling(int subsampleNumber) = 0;
 
     virtual int setPatternPartitions(int partitionCount,

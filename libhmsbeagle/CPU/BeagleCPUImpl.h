@@ -104,15 +104,15 @@ protected:
     REALTYPE** gStateFrequencies;
 
     // Subsampling members
-    int mSubsampleNumber;                        // Number of sites to subsample
-    std::vector<double> mPatternWeightsOriginal; // Stores the full set of pattern weights before subsampling
-    int mOriginalPatternCount;                   // Stores the original total number of patterns before subsampling
-    std::vector<int> mSubsampledPatternIndices;    // Indices of the subsampled patterns relative to the original set
-    std::vector<double> mSubsampledPatternWeights; // Weights of the subsampled patterns
-    bool mIsSubsamplingEnabled;                  // Flag to indicate if subsampling is active
-    std::vector<int> mPatternIndividualCounts;       // Cached counts of individuals per pattern
-    long long mTotalIndividualsInSystem;           // Cached total individuals in the system
-    std::vector<int> mIndividualSourcePatternIndices; // Cached list of source pattern indices for all individuals
+    int kSubsampleNumber;                        // Number of sites to subsample
+    std::vector<double> kPatternWeightsOriginal; // Stores the full set of pattern weights before subsampling
+    int kOriginalPatternCount;                   // Stores the original total number of patterns before subsampling
+    std::vector<int> gSubsampledPatternIndices;    // Indices of the subsampled patterns relative to the original set
+    std::vector<double> gSubsampledPatternWeights; // Weights of the subsampled patterns
+    bool kIsSubsamplingEnabled;                  // Flag to indicate if subsampling is active
+    std::vector<int> kPatternIndividualCounts;       // Cached counts of individuals per pattern
+    long long kTotalIndividualsInSystem;           // Cached total individuals in the system
+    std::vector<int> gIndividualSourcePatternIndices; // Cached list of source pattern indices for all individuals
 
     std::random_device rd_shuffle_device; // Renamed to avoid conflict with local variables if any
     std::mt19937 g_shuffle_engine;      // Renamed for clarity
@@ -263,8 +263,6 @@ public:
     int setPatternWeights(const double* inPatternWeights);
 
     int setSubsampling(int subsampleNumber);
-
-    int setSamplingSize(int samplingSize);
 
     int setPatternPartitions(int partitionCount,
                              const int* inPatternPartitions);
@@ -655,7 +653,7 @@ protected:
                                   const REALTYPE* matrices2,
                                   int startPattern,
                                   int endPattern,
-                                  bool subsampling = false);
+                                  bool subsampling);
 
 
     virtual void calcStatesPartials(REALTYPE* destP,
@@ -665,7 +663,7 @@ protected:
                                     const REALTYPE* matrices2,
                                     int startPattern,
                                     int endPatternd,
-                                    bool subsampling = false);
+                                    bool subsampling);
 
     virtual void calcPartialsPartials(REALTYPE* destP,
                                       const REALTYPE* partials1,
@@ -673,7 +671,8 @@ protected:
                                       const REALTYPE* partials2,
                                       const REALTYPE* matrices2,
                                       int startPattern,
-                                      int endPattern);
+                                      int endPattern,
+                                      bool subsampling);
 
     virtual void calcPrePartialsPartials(REALTYPE* destP,
                                          const REALTYPE* partials1,

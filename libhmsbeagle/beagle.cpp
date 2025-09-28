@@ -970,19 +970,6 @@ int beagleSetSubsampling(int instance,
     return returnValue;
 }
 
-int beagleSetSamplingSize(int instance,
-                          int samplingSize) {
-    DEBUG_START_TIME();
-    DEBUG_START_ENERGY();
-    beagle::BeagleImpl* beagleInstance = beagle::getBeagleInstance(instance);
-    if (beagleInstance == NULL)
-        return BEAGLE_ERROR_UNINITIALIZED_INSTANCE;
-    int returnValue = beagleInstance->setSamplingSize(samplingSize);
-    DEBUG_END_TIME();
-    DEBUG_END_ENERGY();
-    return returnValue;
-}
-
 int beagleSetPatternPartitions(int instance,
                                int partitionCount,
                                const int* inPatternPartitions) {

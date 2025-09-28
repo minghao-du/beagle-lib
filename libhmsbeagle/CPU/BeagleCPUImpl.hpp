@@ -280,11 +280,11 @@ BeagleCPUImpl<BEAGLE_CPU_GENERIC>::~BeagleCPUImpl() {
     }
 
     // Clear cached subsampling data structures
-    mPatternIndividualCounts.clear();
-    mIndividualSourcePatternIndices.clear();
-    mPatternWeightsOriginal.clear();
-    mSubsampledPatternIndices.clear();
-    mSubsampledPatternWeights.clear();
+    kPatternIndividualCounts.clear();
+    gIndividualSourcePatternIndices.clear();
+    kPatternWeightsOriginal.clear();
+    gSubsampledPatternIndices.clear();
+    gSubsampledPatternWeights.clear();
 }
 
 BEAGLE_CPU_TEMPLATE
@@ -631,12 +631,12 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::createInstance(int tipCount,
     }
 
     // Initialize subsampling members
-    mSubsampleNumber = 0;
-    mOriginalPatternCount = patternCount;
-    mIsSubsamplingEnabled = false;
-    mPatternIndividualCounts.clear(); // Initialize as empty vector
-    mTotalIndividualsInSystem = 0;    // Initialize to 0
-    mIndividualSourcePatternIndices.clear(); // Initialize as empty vector
+    kSubsampleNumber = 0;
+    kOriginalPatternCount = patternCount;
+    kIsSubsamplingEnabled = false;
+    kPatternIndividualCounts.clear(); // Initialize as empty vector
+    kTotalIndividualsInSystem = 0;    // Initialize to 0
+    gIndividualSourcePatternIndices.clear(); // Initialize as empty vector
 
     kSamplingSize = 0;
     kSampledSites.clear();
@@ -951,20 +951,20 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::setCategoryRatesWithIndex(int categoryRat
 BEAGLE_CPU_TEMPLATE
 int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::setPatternWeights(const double* inPatternWeights) {
     assert(inPatternWeights != 0L);
-    // Ensure mOriginalPatternCount is set (should be from createInstance)
+    // Ensure kOriginalPatternCount is set (should be from createInstance)
     // If kPatternCount is the definitive source, use it.
-    // For this change, we assume mOriginalPatternCount is correctly set by createInstance.
+    // For this change, we assume kOriginalPatternCount is correctly set by createInstance.
 
-    mPatternWeightsOriginal.resize(mOriginalPatternCount);
-    memcpy(mPatternWeightsOriginal.data(), inPatternWeights, mOriginalPatternCount * sizeof(double));
+    kPatternWeightsOriginal.resize(kOriginalPatternCount);
+    memcpy(kPatternWeightsOriginal.data(), inPatternWeights, kOriginalPatternCount * sizeof(double));
 
     // Original gPatternWeights
     memcpy(gPatternWeights, inPatternWeights, sizeof(double) * kPatternCount);
 
     // When pattern weights change, invalidate the cached subsampling data
-    mPatternIndividualCounts.clear();
-    mIndividualSourcePatternIndices.clear();
-    mTotalIndividualsInSystem = 0;
+    kPatternIndividualCounts.clear();
+    gIndividualSourcePatternIndices.clear();
+    kTotalIndividualsInSystem = 0;
 
     return BEAGLE_SUCCESS;
 }
@@ -974,26 +974,26 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::resampleIndividuals() {
 
     // Shuffle this list to randomize individuals
     // todo: random seed?
-    std::shuffle(mIndividualSourcePatternIndices.begin(), mIndividualSourcePatternIndices.end(), g_shuffle_engine);
+    std::shuffle(gIndividualSourcePatternIndices.begin(), gIndividualSourcePatternIndices.end(), g_shuffle_engine);
 
     // Clear previous results and store new counts of individuals sampled per pattern
-    mSubsampledPatternIndices.clear();
-    mSubsampledPatternWeights.clear(); 
+    gSubsampledPatternIndices.clear();
+    gSubsampledPatternWeights.clear(); 
     
     std::map<int, int> pattern_actual_sample_counts; // Key: pattern_index, Value: count of individuals sampled
-    // Select the first mSubsampleNumber from the shuffled list
-    // Ensure we don't try to sample more than available if mIndividualSourcePatternIndices is smaller
-    // (e.g. if totalIndividualsInSystem was less than mSubsampleNumber, though setSubsampling should prevent this)
-    int individualsToSample = mSubsampleNumber;
+    // Select the first kSubsampleNumber from the shuffled list
+    // Ensure we don't try to sample more than available if gIndividualSourcePatternIndices is smaller
+    // (e.g. if totalIndividualsInSystem was less than kSubsampleNumber, though setSubsampling should prevent this)
+    int individualsToSample = kSubsampleNumber;
     for (int k = 0; k < individualsToSample; ++k) {
-        pattern_actual_sample_counts[mIndividualSourcePatternIndices[k]]++;
+        pattern_actual_sample_counts[gIndividualSourcePatternIndices[k]]++;
     }
 
-    // Populate the output vectors (mSubsampledPatternIndices and mSubsampledPatternWeights)
+    // Populate the output vectors (gSubsampledPatternIndices and gSubsampledPatternWeights)
     // The map iteration ensures that pattern indices are sorted.
     for (const auto& pair : pattern_actual_sample_counts) {
-        mSubsampledPatternIndices.push_back(pair.first);
-        mSubsampledPatternWeights.push_back(static_cast<double>(pair.second));
+        gSubsampledPatternIndices.push_back(pair.first);
+        gSubsampledPatternWeights.push_back(static_cast<double>(pair.second));
     }
 
     return BEAGLE_SUCCESS;
@@ -1001,109 +1001,49 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::resampleIndividuals() {
 
 BEAGLE_CPU_TEMPLATE
 int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::setSubsampling(int subsampleNumber) {
-    assert(subsampleNumber >= 0);
+    assert(subsampleNumber > 0);
 
-    // If subsampleNumber is zero, disable subsampling and restore original weights.
-    if (subsampleNumber == 0) {
-        mIsSubsamplingEnabled = false;
-        mSubsampleNumber = 0; // Store that subsampling is off (or 0 items requested)
-        mSubsampledPatternIndices.clear();
-        mSubsampledPatternWeights.clear();
-        // Also clear the caches to allow re-initialization
-        mPatternIndividualCounts.clear();
-        mIndividualSourcePatternIndices.clear();
-        mTotalIndividualsInSystem = 0;
-        return BEAGLE_SUCCESS;
-    }
+    // // Validate preconditions for actual subsampling logic
+    // if (kOriginalPatternCount == 0) {
+    //     // Cannot subsample if there are no original patterns, and subsampleNumber > 0
+    //     return BEAGLE_ERROR_OUT_OF_RANGE;
+    // }
+    // if (kPatternWeightsOriginal.empty() || kPatternWeightsOriginal.size() != (size_t)kOriginalPatternCount) {
+    //     // Original pattern weights must be set first via setPatternWeights and be consistent
+    //     return BEAGLE_ERROR_GENERAL;
+    // }
 
-    // Validate preconditions for actual subsampling logic
-    if (mOriginalPatternCount == 0) {
-        // Cannot subsample if there are no original patterns, and subsampleNumber > 0
-        return BEAGLE_ERROR_OUT_OF_RANGE;
-    }
-    if (mPatternWeightsOriginal.empty() || mPatternWeightsOriginal.size() != (size_t)mOriginalPatternCount) {
-        // Original pattern weights must be set first via setPatternWeights and be consistent
-        return BEAGLE_ERROR_GENERAL;
-    }
-
-    mSubsampleNumber = subsampleNumber;
+    kSubsampleNumber = subsampleNumber;
 
     // Clear caches before repopulating
-    mPatternIndividualCounts.clear();
-    mIndividualSourcePatternIndices.clear();
+    // kPatternIndividualCounts.clear();
+    // gIndividualSourcePatternIndices.clear();
 
-    mPatternIndividualCounts.assign(mOriginalPatternCount, 0);
-    mTotalIndividualsInSystem = 0;
-    for (int i = 0; i < mOriginalPatternCount; ++i) {
-        mPatternIndividualCounts[i] = static_cast<int>(std::max(0.0, mPatternWeightsOriginal[i]));
-        mTotalIndividualsInSystem += mPatternIndividualCounts[i];
+    // kPatternIndividualCounts.assign(kPatternCount, 0);
+    kTotalIndividualsInSystem = 0;
+    for (int i = 0; i < kPatternCount; ++i) {
+        // kPatternIndividualCounts[i] = static_cast<int>(std::max(0.0, gPatternWeights[i]));
+        kTotalIndividualsInSystem += gPatternWeights[i];
     }
 
-    if (mTotalIndividualsInSystem == 0) {
+    if (kTotalIndividualsInSystem == 0) {
         return BEAGLE_ERROR_GENERAL;
-    }
-
-    mIndividualSourcePatternIndices.reserve(mTotalIndividualsInSystem);
-    for (int i = 0; i < mOriginalPatternCount; ++i) {
-        // Add pattern index 'i' for 'mPatternIndividualCounts[i]' times
-        for (int count = 0; count < mPatternIndividualCounts[i]; ++count) {
-            mIndividualSourcePatternIndices.push_back(i);
-        }
     }
 
     // Error with subsampling if more individuals requested than in system
-    if (mSubsampleNumber > mTotalIndividualsInSystem) {
+    if (kSubsampleNumber > kTotalIndividualsInSystem) {
         return BEAGLE_ERROR_OUT_OF_RANGE;
     }
 
-    mIsSubsamplingEnabled = true;
-
-    return BEAGLE_SUCCESS;
-}
-
-//  check: setSamplingSize and setSubsampling到底有什么区别，是否要合并
-BEAGLE_CPU_TEMPLATE
-int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::setSamplingSize(int samplingSize) {
-    if (samplingSize < 0) {
-        return BEAGLE_ERROR_OUT_OF_RANGE;
+    gIndividualSourcePatternIndices.reserve(kTotalIndividualsInSystem);
+    for (int i = 0; i < kOriginalPatternCount; ++i) {
+        // Add pattern index 'i' for 'kPatternIndividualCounts[i]' times
+        for (int count = 0; count < gPatternWeights[i]; ++count) {
+            gIndividualSourcePatternIndices.push_back(i);
+        }
     }
 
-    if (samplingSize == 0) {
-        kSamplingSize = 0;
-        kSampledSites.clear();
-        return BEAGLE_SUCCESS;
-    }
-
-    // Todo: Check if samplingSize is larger than total characters?
-    // if (samplingSize > kPatternCount) {
-    //     return BEAGLE_ERROR_OUT_OF_RANGE; 
-    // }
-
-    if (gPatternWeights == NULL) {
-        return BEAGLE_ERROR_GENERAL;
-    }
-
-    // double sum_of_weights = 0.0;
-    // for (int i = 0; i < kPatternCount; ++i) {
-    //     if (gPatternWeights[i] < 0.0) {
-    //         return BEAGLE_ERROR_GENERAL;
-    //     }
-    //     sum_of_weights += gPatternWeights[i];
-    // }
-
-    mIsSubsamplingEnabled = true;
-
-    kSamplingSize = samplingSize;
-    kSampledSites.resize(kSamplingSize);
-
-    // Perform weighted random sampling based on gPatternWeights
-    // Create a discrete distribution using gPatternWeights
-    std::discrete_distribution<> distribution(gPatternWeights, gPatternWeights + kPatternCount);
-
-    // Sample 'samplingSize' pattern indices
-    for (int i = 0; i < kSamplingSize; ++i) {
-        kSampledSites[i] = distribution(g_shuffle_engine);
-    }
+    kIsSubsamplingEnabled = true;
 
     return BEAGLE_SUCCESS;
 }
@@ -2816,7 +2756,7 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::upPartials(bool byPartition,
                                                   bool subsampling) {
 
     if (subsampling) {
-        if (!mIsSubsamplingEnabled) {
+        if (!kIsSubsamplingEnabled) {
             return BEAGLE_ERROR_GENERAL; // Subsampling not set up
         }
         resampleIndividuals(); // Perform sampling
@@ -2966,7 +2906,7 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::upPartials(bool byPartition,
                                                  matrices2,scalingFactors,startPattern,endPattern);
             } else {
                 calcPartialsPartials(destPartials, partials1, matrices1, partials2, matrices2,
-                                     startPattern, endPattern);
+                                     startPattern, endPattern, subsampling);
                 if (rescale == 1) {// Recompute scaleFactors
                     if (byPartition) {
                         rescalePartialsByPartition(destPartials,scalingFactors,cumulativeScaleBuffer,0, currentPartition);
@@ -3963,54 +3903,118 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcRootLogLikelihoods(const int bufferIn
     const REALTYPE* rootPartials = gPartials[bufferIndex];
     const REALTYPE* wt = gCategoryWeights[categoryWeightsIndex];
     const REALTYPE* freqs = gStateFrequencies[stateFrequenciesIndex];
-    int u = 0;
-    int v = 0;
-    for (int k = 0; k < kPatternCount; k++) {
-        for (int i = 0; i < kStateCount; i++) {
-            integrationTmp[u] = rootPartials[v] * (REALTYPE) wt[0];
-            u++;
-            v++;
-        }
-        v += P_PAD;
-    }
-    for (int l = 1; l < kCategoryCount; l++) {
-        u = 0;
-        for (int k = 0; k < kPatternCount; k++) {
-            for (int i = 0; i < kStateCount; i++) {
-                integrationTmp[u] += rootPartials[v] * (REALTYPE) wt[l];
-                u++;
-                v++;
-            }
-            v += P_PAD;
-        }
-    }
-    u = 0;
-    for (int k = 0; k < kPatternCount; k++) {
-        REALTYPE sum = 0.0;
-        for (int i = 0; i < kStateCount; i++) {
-            sum += freqs[i] * integrationTmp[u];
-            u++;
-        }
 
-        outLogLikelihoodsTmp[k] = log(sum);
-    }
+    // int u = 0;
+    // int v = 0;
+    // for (int k = 0; k < kPatternCount; k++) {
+    //     for (int i = 0; i < kStateCount; i++) {
+    //         integrationTmp[u] = rootPartials[v] * (REALTYPE) wt[0];
+    //         u++;
+    //         v++;
+    //     }
+    //     v += P_PAD;
+    // }
+    // for (int l = 1; l < kCategoryCount; l++) {
+    //     u = 0;
+    //     for (int k = 0; k < kPatternCount; k++) {
+    //         for (int i = 0; i < kStateCount; i++) {
+    //             integrationTmp[u] += rootPartials[v] * (REALTYPE) wt[l];
+    //             u++;
+    //             v++;
+    //         }
+    //         v += P_PAD;
+    //     }
+    // }
+    // u = 0;
+    // for (int k = 0; k < kPatternCount; k++) {
+    //     REALTYPE sum = 0.0;
+    //     for (int i = 0; i < kStateCount; i++) {
+    //         sum += freqs[i] * integrationTmp[u];
+    //         u++;
+    //     }
 
-    if (scalingFactorsIndex >= 0) {
-        const REALTYPE* cumulativeScaleFactors = gScaleBuffers[scalingFactorsIndex];
-        for(int i=0; i<kPatternCount; i++) {
-            outLogLikelihoodsTmp[i] += cumulativeScaleFactors[i];
-        }
-    }
+    //     outLogLikelihoodsTmp[k] = log(sum);
+    // }
 
-    *outSumLogLikelihood = 0.0;
-    for (int i = 0; i < kPatternCount; i++) {
-        *outSumLogLikelihood += outLogLikelihoodsTmp[i] * gPatternWeights[i];
-    }
+    // if (scalingFactorsIndex >= 0) {
+    //     const REALTYPE* cumulativeScaleFactors = gScaleBuffers[scalingFactorsIndex];
+    //     for(int i=0; i<kPatternCount; i++) {
+    //         outLogLikelihoodsTmp[i] += cumulativeScaleFactors[i];
+    //     }
+    // }
 
-    if (*outSumLogLikelihood != *outSumLogLikelihood)
-        returnCode = BEAGLE_ERROR_FLOATING_POINT;
+    // *outSumLogLikelihood = 0.0;
+    // for (int i = 0; i < kPatternCount; i++) {
+    //     *outSumLogLikelihood += outLogLikelihoodsTmp[i] * gPatternWeights[i];
+    // }
+
+    // if (*outSumLogLikelihood != *outSumLogLikelihood)
+    //     returnCode = BEAGLE_ERROR_FLOATING_POINT;
 
     // TODO: merge the three kPatternCount loops above into one
+
+    *outSumLogLikelihood = 0.0;
+
+    const int patternStride = kStateCount + P_PAD;
+    const int categoryStride = kPatternCount * patternStride;
+
+    // Define a lambda expression to encapsulate the repetitive logic for calculating the likelihood of a single pattern.
+    auto calculate_logL_for_pattern = [&](int k) -> double {
+        // Part A: Calculate the weighted sum across all categories.
+        REALTYPE* integration_k_ptr = integrationTmp + k * kStateCount;
+
+        for(int i = 0; i < kStateCount; ++i) {
+            integration_k_ptr[i] = 0.0;
+        }
+
+        for (int l = 0; l < kCategoryCount; l++) {
+            int v_start = l * categoryStride + k * patternStride;
+            for (int j = 0; j < kStateCount; j++) {
+                integration_k_ptr[j] += rootPartials[v_start + j] * (REALTYPE)wt[l];
+            }
+        }
+
+        // Part B: Calculate the final sum using state frequencies.
+        REALTYPE patternSum = 0.0;
+        for (int j = 0; j < kStateCount; j++) {
+            patternSum += freqs[j] * integration_k_ptr[j];
+        }
+
+        // Part C: Calculate the log-likelihood and apply the scaling factor.
+        double logL_k = log(patternSum);
+        if (scalingFactorsIndex >= 0) {
+            logL_k += gScaleBuffers[scalingFactorsIndex][k];
+        }
+
+        outLogLikelihoodsTmp[k] = logL_k;
+        
+        return logL_k;
+    };
+
+    if (subsampling) {
+        // When subsampling is enabled, iterate over the subsampled patterns.
+        for (size_t i = 0; i < gSubsampledPatternIndices.size(); ++i) {
+            int k = gSubsampledPatternIndices[i];
+            double weight = gSubsampledPatternWeights[i];
+            
+            double logL_k = calculate_logL_for_pattern(k);
+            
+            *outSumLogLikelihood += logL_k * weight;
+        }
+    } else {
+        // When subsampling is disabled, iterate over all patterns.
+        for (int k = 0; k < kPatternCount; ++k) {
+            double weight = gPatternWeights[k];
+
+            double logL_k = calculate_logL_for_pattern(k);
+
+            *outSumLogLikelihood += logL_k * weight;
+        }
+    }
+
+    if (*outSumLogLikelihood != *outSumLogLikelihood) { // Check for NaN
+        returnCode = BEAGLE_ERROR_FLOATING_POINT;
+    }
 
     return returnCode;
 }
@@ -5585,28 +5589,78 @@ void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcStatesStates(REALTYPE* destP,
 
 #pragma omp parallel for num_threads(kCategoryCount)
     for (int l = 0; l < kCategoryCount; l++) {
-        int v = l*kPartialsPaddedStateCount*kPatternCount + kPartialsPaddedStateCount*startPattern;
-        for (int k = startPattern; k < endPattern; k++) {
+        // int v = l*kPartialsPaddedStateCount*kPatternCount + kPartialsPaddedStateCount*startPattern;
+        // for (int k = startPattern; k < endPattern; k++) {
+        //     const int state1 = states1[k];
+        //     const int state2 = states2[k];
+        //     if (DEBUGGING_OUTPUT) {
+        //         std::cerr << "calcStatesStates s1 = " << state1 << '\n';
+        //         std::cerr << "calcStatesStates s2 = " << state2 << '\n';
+        //     }
+        //     int w = l * kMatrixSize;
+        //     for (int i = 0; i < kStateCount; i++) {
+        //         destP[v] = matrices1[w + state1] * matrices2[w + state2];
+        //         v++;
+
+        //         w += kTransPaddedStateCount;
+        //     }
+        //     if (P_PAD) {
+        //         for (int pad = 0; pad < P_PAD; pad++)  {
+        //             destP[v] = 0.0;
+        //             v++;
+        //         }
+        //     }
+        // }
+
+        // 1. Extract the core logic for processing a single pattern into a Lambda expression.
+        // This lambda encapsulates all the work that needs to be done for a given pattern 'k'.
+        auto process_pattern = [&](int k) {
             const int state1 = states1[k];
             const int state2 = states2[k];
+
             if (DEBUGGING_OUTPUT) {
                 std::cerr << "calcStatesStates s1 = " << state1 << '\n';
                 std::cerr << "calcStatesStates s2 = " << state2 << '\n';
             }
+            
+            // 2. Key change: Calculate the destination starting index 'v' directly for each 'k'.
+            // This is necessary because subsampling uses non-sequential indices, so we
+            // can no longer rely on simply incrementing 'v' from the previous pattern.
+            int v = l * kPartialsPaddedStateCount * kPatternCount + 
+                    k * kPartialsPaddedStateCount;
+
+            // The logic for 'w' is unchanged; it is reset at the start of each pattern.
             int w = l * kMatrixSize;
+
             for (int i = 0; i < kStateCount; i++) {
                 destP[v] = matrices1[w + state1] * matrices2[w + state2];
                 v++;
-
                 w += kTransPaddedStateCount;
             }
+
             if (P_PAD) {
                 for (int pad = 0; pad < P_PAD; pad++)  {
                     destP[v] = 0.0;
                     v++;
                 }
             }
+        };
+
+        // 3. Select the iteration method based on the 'subsampling' flag.
+        // The if/else block now only controls HOW we iterate, not WHAT we do in the loop.
+        if (subsampling) {
+            // Only process the patterns specified in gSubsampledPatternIndices.
+            // (Assuming gSubsampledPatternIndices is a member variable like `this->gSubsampledPatternIndices`)
+            for (const auto& k : this->gSubsampledPatternIndices) {
+                process_pattern(k);
+            }
+        } else {
+            // Maintain the original logic for processing a contiguous range of patterns.
+            for (int k = startPattern; k < endPattern; k++) {
+                process_pattern(k);
+            }
         }
+
     }
 }
 
@@ -5668,39 +5722,99 @@ void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcStatesPartials(REALTYPE* destP,
 
 #pragma omp parallel for num_threads(kCategoryCount)
     for (int l = 0; l < kCategoryCount; l++) {
-        int v = l*kPartialsPaddedStateCount*kPatternCount + kPartialsPaddedStateCount*startPattern;
-        int matrixOffset = l*kMatrixSize;
-        const REALTYPE* partials2Ptr = &partials2[v];
-        REALTYPE* destPtr = &destP[v];
-        for (int k = startPattern; k < endPattern; k++) {
+        // int v = l*kPartialsPaddedStateCount*kPatternCount + kPartialsPaddedStateCount*startPattern;
+        // int matrixOffset = l*kMatrixSize;
+        // const REALTYPE* partials2Ptr = &partials2[v];
+        // REALTYPE* destPtr = &destP[v];
+        // for (int k = startPattern; k < endPattern; k++) {
+        //     int w = l * kMatrixSize;
+        //     int state1 = states1[k];
+        //     for (int i = 0; i < kStateCount; i++) {
+        //         const REALTYPE* matrices2Ptr = matrices2 + matrixOffset + i * matrixIncr;
+        //         REALTYPE tmp = matrices1[w + state1];
+        //         REALTYPE sumA = 0.0;
+        //         REALTYPE sumB = 0.0;
+        //         int j = 0;
+        //         for (; j < stateCountModFour; j += 4) {
+        //             sumA += matrices2Ptr[j + 0] * partials2Ptr[j + 0];
+        //             sumB += matrices2Ptr[j + 1] * partials2Ptr[j + 1];
+        //             sumA += matrices2Ptr[j + 2] * partials2Ptr[j + 2];
+        //             sumB += matrices2Ptr[j + 3] * partials2Ptr[j + 3];
+        //         }
+        //         for (; j < kStateCount; j++) {
+        //             sumA += matrices2Ptr[j] * partials2Ptr[j];
+        //         }
+
+        //         w += matrixIncr;
+
+        //         *(destPtr++) = tmp * (sumA + sumB);
+        //     }
+        //     if (P_PAD) {
+        //         for (int pad = 0; pad < P_PAD; pad++)  {
+        //             *(destPtr++) = 0.0;
+        //         }
+        //     }
+        //     partials2Ptr += kPartialsPaddedStateCount;
+        // }
+
+        int matrixOffset = l * kMatrixSize;
+
+        // 1. Encapsulate the logic for a single pattern 'k' into a lambda.
+        auto process_pattern = [&](int k) {
+            // 2. Key change: Calculate base pointers for each 'k' directly.
+            // Instead of incrementing pointers from a block start, we compute the
+            // exact start location for the current pattern's data.
+            int pattern_v_index = l * kPartialsPaddedStateCount * kPatternCount +
+                                  k * kPartialsPaddedStateCount;
+            const REALTYPE* partials2Ptr = &partials2[pattern_v_index];
+            REALTYPE* destPtr = &destP[pattern_v_index];
+
             int w = l * kMatrixSize;
             int state1 = states1[k];
+
             for (int i = 0; i < kStateCount; i++) {
                 const REALTYPE* matrices2Ptr = matrices2 + matrixOffset + i * matrixIncr;
                 REALTYPE tmp = matrices1[w + state1];
                 REALTYPE sumA = 0.0;
                 REALTYPE sumB = 0.0;
+                
                 int j = 0;
+                // Unrolled loop for performance
                 for (; j < stateCountModFour; j += 4) {
                     sumA += matrices2Ptr[j + 0] * partials2Ptr[j + 0];
                     sumB += matrices2Ptr[j + 1] * partials2Ptr[j + 1];
                     sumA += matrices2Ptr[j + 2] * partials2Ptr[j + 2];
                     sumB += matrices2Ptr[j + 3] * partials2Ptr[j + 3];
                 }
+                // Remainder loop
                 for (; j < kStateCount; j++) {
                     sumA += matrices2Ptr[j] * partials2Ptr[j];
                 }
 
                 w += matrixIncr;
-
                 *(destPtr++) = tmp * (sumA + sumB);
             }
+
             if (P_PAD) {
                 for (int pad = 0; pad < P_PAD; pad++)  {
                     *(destPtr++) = 0.0;
                 }
             }
-            partials2Ptr += kPartialsPaddedStateCount;
+            // Note: The original `partials2Ptr += kPartialsPaddedStateCount;` is removed
+            // because the pointer is now recalculated at the start of every call.
+        };
+
+        // 3. Choose the iteration method based on the 'subsampling' flag.
+        if (subsampling) {
+            // Iterate over the sparse list of pattern indices.
+            for (const auto& k : this->gSubsampledPatternIndices) {
+                process_pattern(k);
+            }
+        } else {
+            // Iterate over the contiguous range of patterns.
+            for (int k = startPattern; k < endPattern; k++) {
+                process_pattern(k);
+            }
         }
     }
 }
@@ -5825,7 +5939,8 @@ void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcPartialsPartials(REALTYPE* destP,
                                                              const REALTYPE* partials2,
                                                              const REALTYPE* matrices2,
                                                              int startPattern,
-                                                             int endPattern) {
+                                                             int endPattern,
+                                                             bool subsampling) {
     int matrixIncr = kStateCount;
 
     // increment for the extra column at the end
@@ -5835,19 +5950,66 @@ void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcPartialsPartials(REALTYPE* destP,
 
 #pragma omp parallel for num_threads(kCategoryCount)
     for (int l = 0; l < kCategoryCount; l++) {
-        int v = l*kPartialsPaddedStateCount*kPatternCount + kPartialsPaddedStateCount*startPattern;
-        int matrixOffset = l*kMatrixSize;
-        const REALTYPE* partials1Ptr = &partials1[v];
-        const REALTYPE* partials2Ptr = &partials2[v];
-        REALTYPE* destPtr = &destP[v];
-        for (int k = startPattern; k < endPattern; k++) {
+        // int v = l*kPartialsPaddedStateCount*kPatternCount + kPartialsPaddedStateCount*startPattern;
+        // int matrixOffset = l*kMatrixSize;
+        // const REALTYPE* partials1Ptr = &partials1[v];
+        // const REALTYPE* partials2Ptr = &partials2[v];
+        // REALTYPE* destPtr = &destP[v];
+        // for (int k = startPattern; k < endPattern; k++) {
 
+        //     for (int i = 0; i < kStateCount; i++) {
+        //         const REALTYPE* matrices1Ptr = matrices1 + matrixOffset + i * matrixIncr;
+        //         const REALTYPE* matrices2Ptr = matrices2 + matrixOffset + i * matrixIncr;
+        //         REALTYPE sum1A = 0.0, sum2A = 0.0;
+        //         REALTYPE sum1B = 0.0, sum2B = 0.0;
+        //         int j = 0;
+        //         for (; j < stateCountModFour; j += 4) {
+        //             sum1A += matrices1Ptr[j + 0] * partials1Ptr[j + 0];
+        //             sum2A += matrices2Ptr[j + 0] * partials2Ptr[j + 0];
+
+        //             sum1B += matrices1Ptr[j + 1] * partials1Ptr[j + 1];
+        //             sum2B += matrices2Ptr[j + 1] * partials2Ptr[j + 1];
+
+        //             sum1A += matrices1Ptr[j + 2] * partials1Ptr[j + 2];
+        //             sum2A += matrices2Ptr[j + 2] * partials2Ptr[j + 2];
+
+        //             sum1B += matrices1Ptr[j + 3] * partials1Ptr[j + 3];
+        //             sum2B += matrices2Ptr[j + 3] * partials2Ptr[j + 3];
+        //         }
+
+        //         for (; j < kStateCount; j++) {
+        //             sum1A += matrices1Ptr[j] * partials1Ptr[j];
+        //             sum2A += matrices2Ptr[j] * partials2Ptr[j];
+        //         }
+
+        //         *(destPtr++) = (sum1A + sum1B) * (sum2A + sum2B);
+        //     }
+        //     destPtr += P_PAD;
+        //     partials1Ptr += kPartialsPaddedStateCount;
+        //     partials2Ptr += kPartialsPaddedStateCount;
+        // }
+
+        int matrixOffset = l * kMatrixSize;
+
+        // 1. Encapsulate the logic for a single pattern 'k' into a lambda.
+        auto process_pattern = [&](int k) {
+            // 2. Calculate base pointers for this specific 'k' from scratch.
+            // This is the key change to support non-sequential indices.
+            int pattern_v_index = l * kPartialsPaddedStateCount * kPatternCount +
+                                  k * kPartialsPaddedStateCount;
+            const REALTYPE* partials1Ptr = &partials1[pattern_v_index];
+            const REALTYPE* partials2Ptr = &partials2[pattern_v_index];
+            REALTYPE* destPtr = &destP[pattern_v_index];
+
+            // The core computation for one pattern begins here.
             for (int i = 0; i < kStateCount; i++) {
                 const REALTYPE* matrices1Ptr = matrices1 + matrixOffset + i * matrixIncr;
                 const REALTYPE* matrices2Ptr = matrices2 + matrixOffset + i * matrixIncr;
                 REALTYPE sum1A = 0.0, sum2A = 0.0;
                 REALTYPE sum1B = 0.0, sum2B = 0.0;
+                
                 int j = 0;
+                // Unrolled loop for performance
                 for (; j < stateCountModFour; j += 4) {
                     sum1A += matrices1Ptr[j + 0] * partials1Ptr[j + 0];
                     sum2A += matrices2Ptr[j + 0] * partials2Ptr[j + 0];
@@ -5862,6 +6024,7 @@ void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcPartialsPartials(REALTYPE* destP,
                     sum2B += matrices2Ptr[j + 3] * partials2Ptr[j + 3];
                 }
 
+                // Remainder loop for state counts not divisible by 4
                 for (; j < kStateCount; j++) {
                     sum1A += matrices1Ptr[j] * partials1Ptr[j];
                     sum2A += matrices2Ptr[j] * partials2Ptr[j];
@@ -5869,9 +6032,22 @@ void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcPartialsPartials(REALTYPE* destP,
 
                 *(destPtr++) = (sum1A + sum1B) * (sum2A + sum2B);
             }
-            destPtr += P_PAD;
-            partials1Ptr += kPartialsPaddedStateCount;
-            partials2Ptr += kPartialsPaddedStateCount;
+            // Note: The pointer increments at the end of the original 'k' loop
+            // (e.g., partials1Ptr += ...) are now removed, as their function is
+            // replaced by the direct calculation at the start of the lambda.
+        };
+
+        // 3. Choose the iteration method based on the 'subsampling' flag.
+        if (subsampling) {
+            // Iterate over the sparse list of pattern indices.
+            for (const auto& k : this->gSubsampledPatternIndices) {
+                process_pattern(k);
+            }
+        } else {
+            // Iterate over the contiguous range of patterns.
+            for (int k = startPattern; k < endPattern; k++) {
+                process_pattern(k);
+            }
         }
     }
 }

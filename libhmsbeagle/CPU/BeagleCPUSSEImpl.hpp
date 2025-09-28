@@ -57,7 +57,8 @@ void BeagleCPUSSEImpl<BEAGLE_CPU_SSE_DOUBLE>::calcStatesStates(double* destP,
                                                                const int* states_r,
                                                                const double* matrices_r,
                                                                int startPattern,
-                                                               int endPattern) {
+                                                               int endPattern,
+                                                               bool subsampling) {
 
 	BeagleCPUImpl<BEAGLE_CPU_SSE_DOUBLE>::calcStatesStates(destP,
                                                            states_q,
@@ -65,7 +66,8 @@ void BeagleCPUSSEImpl<BEAGLE_CPU_SSE_DOUBLE>::calcStatesStates(double* destP,
                                                            states_r,
                                                            matrices_r,
                                                            startPattern,
-                                                           endPattern);
+                                                           endPattern,
+                                                           subsampling);
 }
 
 
@@ -112,14 +114,16 @@ void BeagleCPUSSEImpl<BEAGLE_CPU_SSE_DOUBLE>::calcStatesPartials(double* destP,
                                                                  const double* partials_r,
                                                                  const double* matrices_r,
                                                                  int startPattern,
-                                                                 int endPattern) {
+                                                                 int endPattern,
+                                                                 bool subsampling) {
 	BeagleCPUImpl<BEAGLE_CPU_SSE_DOUBLE>::calcStatesPartials(destP,
 									                         states_q,
 									                         matrices_q,
 									                         partials_r,
 									                         matrices_r,
                                                              startPattern,
-                                                             endPattern);
+                                                             endPattern,
+                                                             subsampling);
 }
 
 //

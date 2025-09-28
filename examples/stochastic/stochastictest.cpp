@@ -23,18 +23,18 @@
 
 #include "libhmsbeagle/beagle.h"
 
-// char *human = (char*)"GAGTC";
-// char *chimp = (char*)"GAGGC";
-// char *gorilla = (char*)"AAAT-";
+char *human = (char*)"GAGTC";
+char *chimp = (char*)"GAAGC";
+char *gorilla = (char*)"AAAT-";
 
 //char *human = (char*)"G";
 //char *chimp = (char*)"G";
 //char *gorilla = (char*)"A";
 
 
-char *human = (char*)"GAGAAATATGTCTGATAAAAGAGTTACTTTGATAGAGTAAATAATAGGAGCTTAAACCCCCTTATTTCTACTAGGACTATGAGAATCGAACCCATCCCTGAGAATCCAAAATTCTCCGTGCCACCTATCACACCCCATCCTAAGTAAGGTCAGCTAAATAAGCTATCGGGCCCATACCCCGAAAATGTTGGTTATACCCTTCCCGTACTAAGAAATTTAGGTTAAATACAGACCAAGAGCCTTCAAAGCCCTCAGTAAGTTG-CAATACTTAATTTCTGTAAGGACTGCAAAACCCCACTCTGCATCAACTGAACGCAAATCAGCCACTTTAATTAAGCTAAGCCCTTCTAGACCAATGGGACTTAAACCCACAAACACTTAGTTAACAGCTAAGCACCCTAATCAAC-TGGCTTCAATCTAAAGCCCCGGCAGG-TTTGAAGCTGCTTCTTCGAATTTGCAATTCAATATGAAAA-TCACCTCGGAGCTTGGTAAAAAGAGGCCTAACCCCTGTCTTTAGATTTACAGTCCAATGCTTCA-CTCAGCCATTTTACCACAAAAAAGGAAGGAATCGAACCCCCCAAAGCTGGTTTCAAGCCAACCCCATGGCCTCCATGACTTTTTCAAAAGGTATTAGAAAAACCATTTCATAACTTTGTCAAAGTTAAATTATAGGCT-AAATCCTATATATCTTA-CACTGTAAAGCTAACTTAGCATTAACCTTTTAAGTTAAAGATTAAGAGAACCAACACCTCTTTACAGTGA";
-char *chimp = (char*)"GGGAAATATGTCTGATAAAAGAATTACTTTGATAGAGTAAATAATAGGAGTTCAAATCCCCTTATTTCTACTAGGACTATAAGAATCGAACTCATCCCTGAGAATCCAAAATTCTCCGTGCCACCTATCACACCCCATCCTAAGTAAGGTCAGCTAAATAAGCTATCGGGCCCATACCCCGAAAATGTTGGTTACACCCTTCCCGTACTAAGAAATTTAGGTTAAGCACAGACCAAGAGCCTTCAAAGCCCTCAGCAAGTTA-CAATACTTAATTTCTGTAAGGACTGCAAAACCCCACTCTGCATCAACTGAACGCAAATCAGCCACTTTAATTAAGCTAAGCCCTTCTAGATTAATGGGACTTAAACCCACAAACATTTAGTTAACAGCTAAACACCCTAATCAAC-TGGCTTCAATCTAAAGCCCCGGCAGG-TTTGAAGCTGCTTCTTCGAATTTGCAATTCAATATGAAAA-TCACCTCAGAGCTTGGTAAAAAGAGGCTTAACCCCTGTCTTTAGATTTACAGTCCAATGCTTCA-CTCAGCCATTTTACCACAAAAAAGGAAGGAATCGAACCCCCTAAAGCTGGTTTCAAGCCAACCCCATGACCTCCATGACTTTTTCAAAAGATATTAGAAAAACTATTTCATAACTTTGTCAAAGTTAAATTACAGGTT-AACCCCCGTATATCTTA-CACTGTAAAGCTAACCTAGCATTAACCTTTTAAGTTAAAGATTAAGAGGACCGACACCTCTTTACAGTGA";
-char *gorilla = (char*)"AGAAAATATGTCTGATAAAAGAGTTACTTTGATAGAGTAAATAATAGAGGTTTAAACCCCCTTATTTCTACTAGGACTATGAGAATTGAACCCATCCCTGAGAATCCAAAATTCTCCGTGCCACCTGTCACACCCCATCCTAAGTAAGGTCAGCTAAATAAGCTATCGGGCCCATACCCCGAAAATGTTGGTCACATCCTTCCCGTACTAAGAAATTTAGGTTAAACATAGACCAAGAGCCTTCAAAGCCCTTAGTAAGTTA-CAACACTTAATTTCTGTAAGGACTGCAAAACCCTACTCTGCATCAACTGAACGCAAATCAGCCACTTTAATTAAGCTAAGCCCTTCTAGATCAATGGGACTCAAACCCACAAACATTTAGTTAACAGCTAAACACCCTAGTCAAC-TGGCTTCAATCTAAAGCCCCGGCAGG-TTTGAAGCTGCTTCTTCGAATTTGCAATTCAATATGAAAT-TCACCTCGGAGCTTGGTAAAAAGAGGCCCAGCCTCTGTCTTTAGATTTACAGTCCAATGCCTTA-CTCAGCCATTTTACCACAAAAAAGGAAGGAATCGAACCCCCCAAAGCTGGTTTCAAGCCAACCCCATGACCTTCATGACTTTTTCAAAAGATATTAGAAAAACTATTTCATAACTTTGTCAAGGTTAAATTACGGGTT-AAACCCCGTATATCTTA-CACTGTAAAGCTAACCTAGCGTTAACCTTTTAAGTTAAAGATTAAGAGTATCGGCACCTCTTTGCAGTGA";
+// char *human = (char*)"GAGAAATATGTCTGATAAAAGAGTTACTTTGATAGAGTAAATAATAGGAGCTTAAACCCCCTTATTTCTACTAGGACTATGAGAATCGAACCCATCCCTGAGAATCCAAAATTCTCCGTGCCACCTATCACACCCCATCCTAAGTAAGGTCAGCTAAATAAGCTATCGGGCCCATACCCCGAAAATGTTGGTTATACCCTTCCCGTACTAAGAAATTTAGGTTAAATACAGACCAAGAGCCTTCAAAGCCCTCAGTAAGTTG-CAATACTTAATTTCTGTAAGGACTGCAAAACCCCACTCTGCATCAACTGAACGCAAATCAGCCACTTTAATTAAGCTAAGCCCTTCTAGACCAATGGGACTTAAACCCACAAACACTTAGTTAACAGCTAAGCACCCTAATCAAC-TGGCTTCAATCTAAAGCCCCGGCAGG-TTTGAAGCTGCTTCTTCGAATTTGCAATTCAATATGAAAA-TCACCTCGGAGCTTGGTAAAAAGAGGCCTAACCCCTGTCTTTAGATTTACAGTCCAATGCTTCA-CTCAGCCATTTTACCACAAAAAAGGAAGGAATCGAACCCCCCAAAGCTGGTTTCAAGCCAACCCCATGGCCTCCATGACTTTTTCAAAAGGTATTAGAAAAACCATTTCATAACTTTGTCAAAGTTAAATTATAGGCT-AAATCCTATATATCTTA-CACTGTAAAGCTAACTTAGCATTAACCTTTTAAGTTAAAGATTAAGAGAACCAACACCTCTTTACAGTGA";
+// char *chimp = (char*)"GGGAAATATGTCTGATAAAAGAATTACTTTGATAGAGTAAATAATAGGAGTTCAAATCCCCTTATTTCTACTAGGACTATAAGAATCGAACTCATCCCTGAGAATCCAAAATTCTCCGTGCCACCTATCACACCCCATCCTAAGTAAGGTCAGCTAAATAAGCTATCGGGCCCATACCCCGAAAATGTTGGTTACACCCTTCCCGTACTAAGAAATTTAGGTTAAGCACAGACCAAGAGCCTTCAAAGCCCTCAGCAAGTTA-CAATACTTAATTTCTGTAAGGACTGCAAAACCCCACTCTGCATCAACTGAACGCAAATCAGCCACTTTAATTAAGCTAAGCCCTTCTAGATTAATGGGACTTAAACCCACAAACATTTAGTTAACAGCTAAACACCCTAATCAAC-TGGCTTCAATCTAAAGCCCCGGCAGG-TTTGAAGCTGCTTCTTCGAATTTGCAATTCAATATGAAAA-TCACCTCAGAGCTTGGTAAAAAGAGGCTTAACCCCTGTCTTTAGATTTACAGTCCAATGCTTCA-CTCAGCCATTTTACCACAAAAAAGGAAGGAATCGAACCCCCTAAAGCTGGTTTCAAGCCAACCCCATGACCTCCATGACTTTTTCAAAAGATATTAGAAAAACTATTTCATAACTTTGTCAAAGTTAAATTACAGGTT-AACCCCCGTATATCTTA-CACTGTAAAGCTAACCTAGCATTAACCTTTTAAGTTAAAGATTAAGAGGACCGACACCTCTTTACAGTGA";
+// char *gorilla = (char*)"AGAAAATATGTCTGATAAAAGAGTTACTTTGATAGAGTAAATAATAGAGGTTTAAACCCCCTTATTTCTACTAGGACTATGAGAATTGAACCCATCCCTGAGAATCCAAAATTCTCCGTGCCACCTGTCACACCCCATCCTAAGTAAGGTCAGCTAAATAAGCTATCGGGCCCATACCCCGAAAATGTTGGTCACATCCTTCCCGTACTAAGAAATTTAGGTTAAACATAGACCAAGAGCCTTCAAAGCCCTTAGTAAGTTA-CAACACTTAATTTCTGTAAGGACTGCAAAACCCTACTCTGCATCAACTGAACGCAAATCAGCCACTTTAATTAAGCTAAGCCCTTCTAGATCAATGGGACTCAAACCCACAAACATTTAGTTAACAGCTAAACACCCTAGTCAAC-TGGCTTCAATCTAAAGCCCCGGCAGG-TTTGAAGCTGCTTCTTCGAATTTGCAATTCAATATGAAAT-TCACCTCGGAGCTTGGTAAAAAGAGGCCCAGCCTCTGTCTTTAGATTTACAGTCCAATGCCTTA-CTCAGCCATTTTACCACAAAAAAGGAAGGAATCGAACCCCCCAAAGCTGGTTTCAAGCCAACCCCATGACCTTCATGACTTTTTCAAAAGATATTAGAAAAACTATTTCATAACTTTGTCAAGGTTAAATTACGGGTT-AAACCCCGTATATCTTA-CACTGTAAAGCTAACCTAGCGTTAACCTTTTAAGTTAAAGATTAAGAGTATCGGCACCTCTTTGCAGTGA";
 
 int* getStates(char *sequence) {
 	int n = strlen(sequence);
@@ -110,7 +110,7 @@ int main( int argc, const char* argv[] )
     bool doJC = true;
 
     bool singlePrecision = false;
-    bool useSSE = true;
+    bool useSSE = false;
 
     // is nucleotides...
     int stateCount = 4;
@@ -122,7 +122,7 @@ int main( int argc, const char* argv[] )
 
     // change # rate category to 2
 //    int rateCategoryCount = 4;
-    int rateCategoryCount = 1;
+    const int rateCategoryCount = 1;
 
     int scaleCount = (scaling ? 7 : 0);
 
@@ -142,38 +142,61 @@ int main( int argc, const char* argv[] )
 
     // --- Identify unique patterns and calculate their weights ---
 
-    // 1. Convert all sequences to integer states
+    // Convert all sequences to integer states
     int totalSites = strlen(human);
     int* humanStatesAll = getStates(human);
     int* chimpStatesAll = getStates(chimp);
     int* gorillaStatesAll = getStates(gorilla);
 
-    // 2. Use std::map to count unique patterns and their weights
-    //    The key is the site pattern (e.g., {A,C,G} -> {0,1,2}), and the value is the number of times the pattern occurs.
-    std::map<std::vector<int>, double> patternCounts;
+    // 1. 用于按首次出现顺序存储模式及其权重的容器
+    //    每个元素是一个 "pair"，包含模式 (vector<int>) 和它的权重 (double)
+    std::vector<std::pair<std::vector<int>, double>> orderedPatterns;
+
+    // 2. 用于快速查找模式是否已存在的辅助 "索引"
+    //    键是模式，值是该模式在 orderedPatterns 向量中的索引
+    std::map<std::vector<int>, int> patternIndexMap;
+    
+    // 3. 遍历所有位点
     for (int i = 0; i < totalSites; i++) {
         std::vector<int> currentPattern = {humanStatesAll[i], chimpStatesAll[i], gorillaStatesAll[i]};
-        patternCounts[currentPattern]++;
+
+        // 4. 在索引中查找当前模式是否已经见过
+        auto it = patternIndexMap.find(currentPattern);
+
+        if (it == patternIndexMap.end()) {
+            // 5. 如果没见过 (it == .end() 表示未找到)
+            // a. 将新模式添加到索引中，其值为它在 orderedPatterns 中的新位置
+            patternIndexMap[currentPattern] = orderedPatterns.size();
+
+            // b. 将新模式和初始权重 1.0 添加到 orderedPatterns 的末尾，从而保持了顺序
+            orderedPatterns.push_back({currentPattern, 1.0});
+        } else {
+            // 6. 如果见过了
+            // a. 从索引中获取该模式在 orderedPatterns 中的位置
+            int index = it->second;
+
+            // b. 直接增加对应位置模式的权重
+            orderedPatterns[index].second++;
+        }
     }
 
-    // 3. Convert the data in the map into the flat array format required by BEAGLE
-    int nPatterns = patternCounts.size(); // Number of unique patterns
+    // 7. 将保持了顺序的数据，转换为 BEAGLE 需要的扁平数组格式
+    int nPatterns = orderedPatterns.size();
     
     int* tipStatesHuman = (int*)malloc(sizeof(int) * nPatterns);
     int* tipStatesChimp = (int*)malloc(sizeof(int) * nPatterns);
     int* tipStatesGorilla = (int*)malloc(sizeof(int) * nPatterns);
     double* patternWeights = (double*)malloc(sizeof(double) * nPatterns);
 
-    int patternIndex = 0;
-    for (auto const& pair : patternCounts) {
-        const std::vector<int>& pattern = pair.first;
-        double count = pair.second;
+    for (int i = 0; i < nPatterns; i++) {
+        const auto& patternData = orderedPatterns[i];
+        const std::vector<int>& pattern = patternData.first;
+        double weight = patternData.second;
 
-        tipStatesHuman[patternIndex] = pattern[0];
-        tipStatesChimp[patternIndex] = pattern[1];
-        tipStatesGorilla[patternIndex] = pattern[2];
-        patternWeights[patternIndex] = count;
-        patternIndex++;
+        tipStatesHuman[i]   = pattern[0];
+        tipStatesChimp[i]   = pattern[1];
+        tipStatesGorilla[i] = pattern[2];
+        patternWeights[i]   = weight;
     }
 
     fprintf(stdout, "Total sequence length is %d sites.\n", totalSites);
@@ -254,7 +277,8 @@ int main( int argc, const char* argv[] )
 #ifdef _WIN32
 	std::vector<double> rates(rateCategoryCount);
 #else
-	double rates[rateCategoryCount];
+	// double rates[rateCategoryCount]; // set array size with a variable is not allowed?
+    double rates[1];
 #endif
 //    for (int i = 0; i < rateCategoryCount; i++) {
 //        rates[i] = 1.0;
@@ -269,7 +293,7 @@ int main( int argc, const char* argv[] )
 	beagleSetCategoryRates(instance, &rates[0]);
 
     // MODIFICATION: Add a boolean to control sampling and define the sample size.
-    bool useSampling = true; // Set to true to enable random sampling.
+    bool useSampling = false; // Set to true to enable random sampling.
     int samplingSize = 0;
     if (useSampling) {
         samplingSize = totalSites / 2; // Sample half of the patterns.
@@ -281,8 +305,6 @@ int main( int argc, const char* argv[] )
 
     beagleSetPatternWeights(instance, patternWeights);
     
-    // MODIFICATION: Call beagleSetSamplingSize if sampling is enabled.
-    // This must be done AFTER setting the pattern weights.
     if (useSampling) {
         beagleSetSubsampling(instance, samplingSize);
     }
@@ -607,10 +629,32 @@ int main( int argc, const char* argv[] )
         int postBufferIndex = 4-i;
         int preBufferIndex = 5+i;
         beagleGetPartials(instance, preBufferIndex, BEAGLE_OP_NONE, seeprePartials);
-//        beagleGetPartials(instance, postBufferIndex, BEAGLE_OP_NONE, seepostPartials);
+        beagleGetPartials(instance, postBufferIndex, BEAGLE_OP_NONE, seepostPartials);
+
+        std::cout << "Post-order Partials for node " << (4 - i) << " (Buffer Index: " << postBufferIndex << "):" << std::endl;
+        int currentIndex = 0;
+        // 循环遍历每个速率类别
+        for (int cat = 0; cat < rateCategoryCount; cat++) {
+            std::cout << "  Rate Category " << cat + 1 << ":" << std::endl;
+            // 循环遍历每个序列模式 (pattern)
+            for (int pat = 0; pat < nPatterns; pat++) {
+                std::cout << "    Pattern " << pat + 1 << ": [";
+                // 循环遍历每个状态 (A, C, G, T)
+                for (int state = 0; state < stateCount; state++) {
+                    std::cout << seepostPartials[currentIndex++];
+                    if (state < stateCount - 1) {
+                        std::cout << ", ";
+                    }
+                }
+                std::cout << "]" << std::endl;
+            }
+        }
+        std::cout << "--------------------------------------------------" << std::endl;
+
 
 //        double * prePartialsPtr = seeprePartials;
-//        double * postPartialsPtr = seepostPartials;
+        // double * postPartialsPtr = seepostPartials;
+
 //
 //        double denominator = 0;
 //        double numerator = 0;
@@ -679,19 +723,19 @@ int main( int argc, const char* argv[] )
 //        }
 //        std::cout<<std::endl;
 
-        std::cout<<"Pre-order Partial for node "<< 4-i << ": \n";
+        // std::cout<<"Pre-order Partial for node "<< 4-i << ": \n";
 
-        int l = 0;
-        for(int s = 0; s < rateCategoryCount; s++){
-            std::cout<<"  rate category"<< s+1<< ": \n";
-            for(int k = 0; k<nPatterns; k++){
-                for(int j=0; j < stateCount; j++){
-                    std::cout<<seeprePartials[l++]<<", ";
-                }
-                std::cout<<std::endl;
-            }
-            std::cout<<std::endl;
-        }
+        // int l = 0;
+        // for(int s = 0; s < rateCategoryCount; s++){
+        //     std::cout<<"  rate category"<< s+1<< ": \n";
+        //     for(int k = 0; k<nPatterns; k++){
+        //         for(int j=0; j < stateCount; j++){
+        //             std::cout<<seeprePartials[l++]<<", ";
+        //         }
+        //         std::cout<<std::endl;
+        //     }
+        //     std::cout<<std::endl;
+        // }
 
     }
 

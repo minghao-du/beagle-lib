@@ -168,7 +168,8 @@ private:
                                 const int* states2,
                                 const double* matrices2,
                                 int startPattern,
-                                int endPattern);
+                                int endPattern,
+                                bool subsampling);
 
     virtual void calcStatesPartials(double* destP,
                                     const int* states1,
@@ -176,7 +177,8 @@ private:
                                     const double* partials2,
                                     const double* matrices2,
                                     int startPattern,
-                                    int endPattern);
+                                    int endPattern,
+                                    bool subsampling);
 
     virtual void calcPartialsPartials(double* __restrict destP,
                                       const double* __restrict partials1,
