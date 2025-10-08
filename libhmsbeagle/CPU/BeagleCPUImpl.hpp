@@ -3259,12 +3259,14 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogDerivatives(const int *postBuf
                                        scalingFactorsIndex,
                                        outDerivativesForNode,
                                        outSumDerivativesForNode,
-                                       outSumSquaredDerivativesForNode);
+                                       outSumSquaredDerivativesForNode,
+                                       subsampling);
         }
 
         accumulateDerivatives(outDerivativesForNode,
                 outSumDerivativesForNode,
-                outSumSquaredDerivativesForNode);
+                outSumSquaredDerivativesForNode,
+                subsampling);
 
     }
 
@@ -3275,17 +3277,42 @@ BEAGLE_CPU_TEMPLATE template <bool DoDerivatives, bool DoSum, bool DoSumSquared>
 void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::accumulateDerivativesImpl(
         double* outDerivatives,
         double* outSumDerivatives,
-        double* outSumSquaredDerivatives) {
+        double* outSumSquaredDerivatives,
+        bool subsampling) {
 
     REALTYPE sum = 0.0;
     REALTYPE sumSquared = 0.0;
 
-    for (int k = 0; k < kPatternCount; k++) {
+    // for (int k = 0; k < kPatternCount; k++) {
+    //     REALTYPE derivative = grandNumeratorDerivTmp[k] / grandDenominatorDerivTmp[k];
+    //     if (DoDerivatives) {
+    //         outDerivatives[k] = derivative;
+    //     }
+    //     if (DoSum) { // TODO Confirm that these are compile-time
+    //         sum += derivative * gPatternWeights[k];
+    //     }
+    //     if (DoSumSquared) {
+    //         sumSquared += derivative * derivative * gPatternWeights[k];
+    //     }
+    // }
+
+    // Determine the list of pattern indices to process based on the subsampling flag.
+    std::vector<int> indicesToProcess;
+    if (subsampling) {
+        indicesToProcess = this->gSubsampledPatternIndices;
+    } else {
+        indicesToProcess.resize(kPatternCount);
+        std::iota(indicesToProcess.begin(), indicesToProcess.end(), 0); // Fills with 0, 1, 2...
+    }
+
+    // Loop over the selected indices.
+    // The original logic already uses direct access via 'k', so it's perfectly compatible.
+    for (int k : indicesToProcess) {
         REALTYPE derivative = grandNumeratorDerivTmp[k] / grandDenominatorDerivTmp[k];
         if (DoDerivatives) {
             outDerivatives[k] = derivative;
         }
-        if (DoSum) { // TODO Confirm that these are compile-time
+        if (DoSum) { // These are compile-time constants, so the check has no runtime cost.
             sum += derivative * gPatternWeights[k];
         }
         if (DoSumSquared) {
@@ -3306,14 +3333,15 @@ BEAGLE_CPU_TEMPLATE template <bool DoDerivatives, bool DoSum>
 void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::accumulateDerivativesDispatch2(
         double* outDerivatives,
         double* outSumDerivatives,
-        double* outSumSquaredDerivatives) {
+        double* outSumSquaredDerivatives,
+        bool subsampling) {
 
     if (outSumSquaredDerivatives == NULL) {
         accumulateDerivativesImpl<DoDerivatives, DoSum, false>(
-                outDerivatives, outSumDerivatives, outSumSquaredDerivatives);
+                outDerivatives, outSumDerivatives, outSumSquaredDerivatives, subsampling);
     } else {
         accumulateDerivativesImpl<DoDerivatives, DoSum, true>(
-                outDerivatives, outSumDerivatives, outSumSquaredDerivatives);
+                outDerivatives, outSumDerivatives, outSumSquaredDerivatives, subsampling);
     }
 }
 
@@ -3321,14 +3349,15 @@ BEAGLE_CPU_TEMPLATE template <bool DoDerivatives>
 void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::accumulateDerivativesDispatch1(
         double* outDerivatives,
         double* outSumDerivatives,
-        double* outSumSquaredDerivatives) {
+        double* outSumSquaredDerivatives,
+        bool subsampling) {
 
     if (outSumDerivatives == NULL) {
         accumulateDerivativesDispatch2<DoDerivatives, false>(
-                outDerivatives, outSumDerivatives, outSumSquaredDerivatives);
+                outDerivatives, outSumDerivatives, outSumSquaredDerivatives, subsampling);
     } else {
         accumulateDerivativesDispatch2<DoDerivatives, true>(
-                outDerivatives, outSumDerivatives, outSumSquaredDerivatives);
+                outDerivatives, outSumDerivatives, outSumSquaredDerivatives, subsampling);
     }
 }
 
@@ -3342,13 +3371,14 @@ void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::resetDerivativeTemporaries() {
 BEAGLE_CPU_TEMPLATE
 void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::accumulateDerivatives(double* outDerivatives,
                                                               double* outSumDerivatives,
-                                                              double* outSumSquaredDerivatives) {
+                                                              double* outSumSquaredDerivatives,
+                                                              bool subsampling) {
     if (outDerivatives == NULL) {
         accumulateDerivativesDispatch1<false>(
-                outDerivatives, outSumDerivatives, outSumSquaredDerivatives);
+                outDerivatives, outSumDerivatives, outSumSquaredDerivatives, subsampling);
     } else {
         accumulateDerivativesDispatch1<true>(
-                outDerivatives, outSumDerivatives, outSumSquaredDerivatives);
+                outDerivatives, outSumDerivatives, outSumSquaredDerivatives, subsampling);
     }
 }
 
@@ -3518,7 +3548,8 @@ void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogDerivativesPartials(const REA
 //                                                                       const REALTYPE *cumulativeScaleBuffer,
                                                                        double *outDerivatives,
                                                                        double *outSumDerivatives,
-                                                                       double *outSumSquaredDerivatives) {
+                                                                       double *outSumSquaredDerivatives,
+                                                                       bool subsampling) {
 
     const REALTYPE *firstDerivMatrix = gTransitionMatrices[firstDerivativeIndex];
 

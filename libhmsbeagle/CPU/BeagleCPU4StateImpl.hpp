@@ -1173,20 +1173,49 @@ void BeagleCPU4StateImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogDerivativesPartials(con
                                                                              const int scalingFactorsIndex,
                                                                              double *outDerivatives,
                                                                              double *outSumDerivatives,
-                                                                             double *outSumSquaredDerivatives) {
+                                                                             double *outSumSquaredDerivatives,
+                                                                             bool subsampling) {
 
     const REALTYPE* transMatrix = gTransitionMatrices[firstDerivativeIndex];
 
     int w = 0;
     for(int l = 0; l < kCategoryCount; l++) {
 
-        int v = l*kPaddedPatternCount*4;
+//         int v = l*kPaddedPatternCount*4;
+
+//         const REALTYPE weight = categoryWeights[l];
+
+//         PREFETCH_MATRIX(1,transMatrix,w); // TODO Use _TRANSPOSE and then reverse integration below
+
+//         for(int k = 0; k < kPatternCount; k++) {
+
+//             PREFETCH_PARTIALS(1, postOrderPartial,v);
+//             PREFETCH_PARTIALS(0, preOrderPartial, v);
+
+
+//             DO_INTEGRATION(1);
+
+// //            grandNumeratorDerivTmp[k] += (sum10 * prePartials[v] + sum11 * prePartials[v + 1]
+// //                    + sum12 * prePartials[v + 2] + sum13 * prePartials[v + 3]) * weight;
+// //            grandDenominatorDerivTmp[k] += (postPartials[v] * prePartials[v] + postPartials[v + 1] * prePartials[v + 1]
+// //                    + postPartials[v + 2] * prePartials[v + 2] + postPartials[v + 3] * prePartials[v + 3]) * weight;
+
+//             grandDenominatorDerivTmp[k] += (p10 * p00 + p11 * p01 + p12 * p02 + p13 * p03) * weight;
+//             grandNumeratorDerivTmp[k] += (sum10 * p00 + sum11 * p01 + sum12 * p02 + sum13 * p03) * weight;
+
+//             v += 4;
+//         }
+//         w += OFFSET*4;
 
         const REALTYPE weight = categoryWeights[l];
 
-        PREFETCH_MATRIX(1,transMatrix,w); // TODO Use _TRANSPOSE and then reverse integration below
+        PREFETCH_MATRIX(1,transMatrix,w);
 
-        for(int k = 0; k < kPatternCount; k++) {
+        // Encapsulate the logic for a single pattern 'k' into a lambda.
+        auto process_pattern = [&](int k) {
+            // Key change: Calculate index 'v' directly for each 'k'.
+            // This replaces the sequential 'v += 4' and allows for random access.
+            int v = l * kPaddedPatternCount * 4 + k * 4;
 
             PREFETCH_PARTIALS(1, postOrderPartial,v);
             PREFETCH_PARTIALS(0, preOrderPartial, v);
@@ -1194,15 +1223,24 @@ void BeagleCPU4StateImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogDerivativesPartials(con
 
             DO_INTEGRATION(1);
 
-//            grandNumeratorDerivTmp[k] += (sum10 * prePartials[v] + sum11 * prePartials[v + 1]
-//                    + sum12 * prePartials[v + 2] + sum13 * prePartials[v + 3]) * weight;
-//            grandDenominatorDerivTmp[k] += (postPartials[v] * prePartials[v] + postPartials[v + 1] * prePartials[v + 1]
-//                    + postPartials[v + 2] * prePartials[v + 2] + postPartials[v + 3] * prePartials[v + 3]) * weight;
-
             grandDenominatorDerivTmp[k] += (p10 * p00 + p11 * p01 + p12 * p02 + p13 * p03) * weight;
             grandNumeratorDerivTmp[k] += (sum10 * p00 + sum11 * p01 + sum12 * p02 + sum13 * p03) * weight;
 
-            v += 4;
+            // Note: The original 'v += 4' is no longer needed because 'v' is
+            // recalculated at the start of every call for the given 'k'.
+        };
+
+        // Choose the iteration method based on the 'subsampling' flag.
+        if (subsampling) {
+            // Iterate over the sparse list of pattern indices.
+            for (const auto& k : this->gSubsampledPatternIndices) {
+                process_pattern(k);
+            }
+        } else {
+            // Iterate over the full, contiguous range of patterns, same as the original code.
+            for (int k = 0; k < kPatternCount; k++) {
+                process_pattern(k);
+            }
         }
         w += OFFSET*4;
     }

@@ -132,7 +132,8 @@ public:
                                                const int scalingFactorsIndex,
                                                double *outDerivatives,
                                                double *outSumDerivatives,
-                                               double *outSumSquaredDerivatives);
+                                               double *outSumSquaredDerivatives,
+                                               bool subsampling);
 
     virtual void calcCrossProductsStates(const int *tipStates,
                                          const REALTYPE *preOrderPartial,

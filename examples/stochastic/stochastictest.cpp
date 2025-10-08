@@ -645,8 +645,6 @@ int main( int argc, const char* argv[] )
         int preBufferIndex = 5+i;
         beagleGetPartials(instance, preBufferIndex, BEAGLE_OP_NONE, seeprePartials);
 
-        std::string filename = useSampling ? "PostPartialOutputSampling.txt" : "PostPartialOutput.txt";
-        std::ofstream outFile(filename);
         if (i <= 1) {
             beagleGetPartials(instance, postBufferIndex, BEAGLE_OP_NONE, seepostPartials);
 

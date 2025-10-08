@@ -608,7 +608,8 @@ protected:
 //                                                const REALTYPE *cumulativeScaleBuffer,
                                                 double *siteLogLikelihoods,
                                                 double *outLogFirstDerivatives,
-                                                double *outLogDiagonalSecondDerivatives);
+                                                double *outLogDiagonalSecondDerivatives,
+                                                bool subsampling);
 
     virtual int calcCrossProducts(const int *postBufferIndices,
                                   const int *preBufferIndices,
@@ -639,7 +640,8 @@ protected:
 
     virtual void accumulateDerivatives(double* outDerivatives,
                                double* outSumDerivatives,
-                               double* outSumSquaredDerivatives);
+                               double* outSumSquaredDerivatives,
+                               bool subsampling);
 
     virtual void autoPartitionPartialsOperations(const int* operations,
                                                  int* partitionOperations,
@@ -915,17 +917,20 @@ private:
     template <bool DoDerivatives>
     void accumulateDerivativesDispatch1(double* outDerivatives,
                                double* outSumDerivatives,
-                               double* outSumSquaredDerivatives);
+                               double* outSumSquaredDerivatives,
+                               bool subsampling);
 
     template <bool DoDerivatives, bool DoSum>
     void accumulateDerivativesDispatch2(double* outDerivatives,
                                double* outSumDerivatives,
-                               double* outSumSquaredDerivatives);
+                               double* outSumSquaredDerivatives,
+                               bool subsampling);
 
     template <bool DoDerivatives, bool DoSum, bool DoSumSquared>
     void accumulateDerivativesImpl(double* outDerivatives,
                                double* outSumDerivatives,
-                               double* outSumSquaredDerivatives);
+                               double* outSumSquaredDerivatives,
+                               bool subsampling);
 };
 
 BEAGLE_CPU_FACTORY_TEMPLATE
