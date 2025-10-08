@@ -49,6 +49,7 @@
         "list": "cpp",
         "map": "cpp",
         "regex": "cpp",
-        "unordered_map": "cpp"
+        "unordered_map": "cpp",
+        "fstream": "cpp"
     }
 }

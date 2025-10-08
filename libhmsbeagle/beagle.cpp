@@ -1294,14 +1294,15 @@ int beagleUpdatePartials(const int instance,
 int beagleUpdatePrePartials(const int instance,
                             const BeagleOperation* operations,
                             int operationCount,
-                            int cumulativeScalingIndex){
+                            int cumulativeScalingIndex,
+                            bool subsampling) {
     DEBUG_START_TIME();
     DEBUG_START_ENERGY();
     beagle::BeagleImpl* beagleInstance = beagle::getBeagleInstance(instance);
     if (beagleInstance == NULL)
         return BEAGLE_ERROR_UNINITIALIZED_INSTANCE;
     int returnValue = beagleInstance->updatePrePartials((const int *) operations, operationCount,
-                                                        cumulativeScalingIndex);
+                                                        cumulativeScalingIndex, subsampling);
     DEBUG_END_TIME();
     DEBUG_END_ENERGY();
     return returnValue;
@@ -1905,7 +1906,8 @@ int beagleCalculateEdgeDerivatives(int instance,
                                    int count,
                                    double *outDerivatives,
                                    double *outSumDerivatives,
-                                   double *outSumSquaredDerivatives) {
+                                   double *outSumSquaredDerivatives,
+                                   bool subsampling) {
     DEBUG_START_TIME();
     DEBUG_START_ENERGY();
 
@@ -1923,7 +1925,8 @@ int beagleCalculateEdgeDerivatives(int instance,
                                                                count,
                                                                outDerivatives,
                                                                outSumDerivatives,
-                                                               outSumSquaredDerivatives);
+                                                               outSumSquaredDerivatives,
+                                                               subsampling);
 
     DEBUG_END_TIME();
     DEBUG_END_ENERGY();

@@ -349,7 +349,8 @@ public:
 
     int updatePrePartials(const int *operations,
                           int operationCount,
-                          int cumulativeScalingIndex);
+                          int cumulativeScalingIndex,
+                          bool subsampling);
 
     int updatePartialsByPartition(const int* operations,
                                   int operationCount);
@@ -466,7 +467,8 @@ public:
                                  int count,
                                  double *outDerivatives,
                                  double *outSumDerivatives,
-                                 double *outSumSquaredDerivatives);
+                                 double *outSumSquaredDerivatives,
+                                 bool subsampling);
 
     int calculateCrossProducts(const int *postBufferIndices,
                                const int *preBufferIndices,
@@ -568,7 +570,8 @@ protected:
     virtual int upPrePartials(bool byPartition,
                               const int* operations,
                               int count,
-                              int cumulativeScaleIndex);
+                              int cumulativeScaleIndex,
+                              bool subsampling);
 
     virtual int calcEdgeLogDerivatives(const int *postBufferIndices,
                                        const int *preBufferIndices,
@@ -580,7 +583,8 @@ protected:
                                        int count,
                                        double *siteLogLikelihoods,
                                        double *outLogFirstDerivatives,
-                                       double *outLogDiagonalSecondDerivatives);
+                                       double *outLogDiagonalSecondDerivatives,
+                                       bool subsampling);
 
     virtual void calcEdgeLogDerivativesStates(const int *tipStates,
                                               const REALTYPE *preOrderPartial,
@@ -591,7 +595,8 @@ protected:
 //                                              const REALTYPE *cumulativeScaleBuffer,
                                               double *siteLogLikelihoods,
                                               double *outLogFirstDerivatives,
-                                              double *outLogDiagonalSecondDerivatives);
+                                              double *outLogDiagonalSecondDerivatives,
+                                              bool subsampling);
 
     virtual void calcEdgeLogDerivativesPartials(const REALTYPE *postOrderPartial,
                                                 const REALTYPE *preOrderPartial,
@@ -680,7 +685,8 @@ protected:
                                          const REALTYPE* partials2,
                                          const REALTYPE* matrices2,
                                          int startPattern,
-                                         int endPattern);
+                                         int endPattern,
+                                         bool subsampling);
 
     virtual void calcPrePartialsStates(REALTYPE* destP,
                                          const REALTYPE* partials1,
@@ -688,7 +694,8 @@ protected:
                                          const int* states2,
                                          const REALTYPE* matrices2,
                                          int startPattern,
-                                         int endPattern);
+                                         int endPattern,
+                                         bool subsampling);
 
     virtual int calcRootLogLikelihoods(const int bufferIndex,
                                         const int categoryWeightsIndex,

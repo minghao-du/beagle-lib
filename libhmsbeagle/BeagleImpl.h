@@ -153,7 +153,8 @@ public:
 
 	virtual int updatePrePartials(const int *operations,
                                   int count,
-                                  int cumulativeScaleIndex) = 0;
+                                  int cumulativeScaleIndex,
+                                  bool subsampling) = 0;
 
     virtual int updatePartialsByPartition(const int* operations,
                                           int operationCount) = 0;
@@ -220,7 +221,8 @@ public:
                                          int count,
                                          double *outDerivatives,
                                          double *outSumDerivatives,
-                                         double *outSumSquaredDerivatives) = 0;
+                                         double *outSumSquaredDerivatives,
+                                         bool subsampling) = 0;
 
 	virtual int calculateCrossProducts(const int *postBufferIndices,
 			                           const int *preBufferIndices,

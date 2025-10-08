@@ -950,7 +950,8 @@ BEAGLE_DLLEXPORT int beagleUpdatePartials(const int instance,
 BEAGLE_DLLEXPORT int beagleUpdatePrePartials(const int instance,
                                              const BeagleOperation* operations,
                                              int operationCount,
-                                             int cumulativeScaleIndex);
+                                             int cumulativeScaleIndex,
+                                             bool subsampling = false);
 
 /**
  * @brief A list of integer indices which specify a partial likelihoods operation for a partitioned analysis.
@@ -1260,7 +1261,8 @@ BEAGLE_DLLEXPORT int beagleCalculateEdgeDerivatives(int instance,
                                                     int count,
                                                     double *outDerivatives,
                                                     double *outSumDerivatives,
-                                                    double *outSumSquaredDerivatives);
+                                                    double *outSumSquaredDerivatives,
+                                                    bool subsampling = false);
 
 BEAGLE_DLLEXPORT int beagleCalculateCrossProductDerivative(int instance,
                                                   const int *postBufferIndices,

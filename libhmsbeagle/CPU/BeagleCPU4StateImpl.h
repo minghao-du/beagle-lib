@@ -100,7 +100,8 @@ public:
                                          const REALTYPE *partialsSibling,
                                          const REALTYPE *matricesSibling,
                                          int startPattern,
-                                         int endPattern);
+                                         int endPattern,
+                                         bool subsampling);
 
     virtual void calcPrePartialsStates(REALTYPE* destP,
                                        const REALTYPE* partials1,
@@ -108,7 +109,8 @@ public:
                                        const int* states2,
                                        const REALTYPE* matrices2,
                                        int startPattern,
-                                       int endPattern);
+                                       int endPattern,
+                                       bool subsampling);
 
     virtual void calcEdgeLogDerivativesStates(const int *tipStates,
                                              const REALTYPE *preOrderPartial,
@@ -118,7 +120,8 @@ public:
                                              const REALTYPE *categoryWeights,
                                              double *outDerivatives,
                                              double *outSumDerivatives,
-                                             double *outSumSquaredDerivatives);
+                                             double *outSumSquaredDerivatives,
+                                             bool subsampling);
 
     virtual void calcEdgeLogDerivativesPartials(const REALTYPE *postOrderPartial,
                                                const REALTYPE *preOrderPartial,

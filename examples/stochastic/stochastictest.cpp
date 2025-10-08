@@ -14,6 +14,7 @@
 #include <cmath>
 #include <vector>
 #include <map>
+#include <fstream>
 
 //#define JC
 
@@ -25,7 +26,7 @@
 
 char *human = (char*)"GAGTC";
 char *chimp = (char*)"GAAGC";
-char *gorilla = (char*)"AAAT-";
+char *gorilla = (char*)"AAATT";
 
 //char *human = (char*)"G";
 //char *chimp = (char*)"G";
@@ -107,15 +108,13 @@ int main( int argc, const char* argv[] )
 //    bool scaling = true;
     bool scaling = false; // disable scaling for now
 
-    bool doJC = true;
-
     bool singlePrecision = false;
     bool useSSE = false;
 
     // is nucleotides...
     int stateCount = 4;
 
-    int nRepeats = 1;
+    // int nRepeats = 1;
 
     // get the number of site patterns
 	// int nPatterns = strlen(human) * nRepeats;
@@ -293,8 +292,8 @@ int main( int argc, const char* argv[] )
 	beagleSetCategoryRates(instance, &rates[0]);
 
     // MODIFICATION: Add a boolean to control sampling and define the sample size.
-    bool useSampling = true; // Set to true to enable random sampling.
-    int samplingSize = 5;
+    bool useSampling = false; // Set to true to enable random sampling.
+    int samplingSize = 0;
     // if (useSampling) {
     //     samplingSize = totalSites / 2; // Sample half of the patterns.
     //     if (samplingSize == 0 && nPatterns > 0) {
@@ -366,7 +365,7 @@ int main( int argc, const char* argv[] )
 //			0.0, 0.0, 0.0, 0.0 };
 //#endif
 
-    ///eigen decomposition of the HKY85 model
+    // eigen decomposition of the HKY85 model
     double evec[4 * 4] = {
             0.9819805,  0.040022305,  0.04454354,  -0.5,
             -0.1091089, -0.002488732, 0.81606029,  -0.5,
@@ -559,6 +558,21 @@ int main( int argc, const char* argv[] )
                                       &logL,
                                       useSampling);         // outLogLikelihoods
 
+    // Test Stochastic Likelihood Calculation
+    // beagleUpdatePartials(instance,      // instance
+    //             operations,     // eigenIndex
+    //             2,              // operationCount
+    //             BEAGLE_OP_NONE,
+    //             useSampling);   
+    // double logL = 0.0;
+    // beagleCalculateRootLogLikelihoods(instance,               // instance
+    //                                   (const int *)&rootIndex,// bufferIndices
+    //                                   &categoryWeightsIndex,                // weights
+    //                                   &stateFrequencyIndex,                  // stateFrequencies
+    //                                   &cumulativeScalingIndex,// cumulative scaling index
+    //                                   1,                      // count
+    //                                   &logL,
+    //                                   useSampling); 
 
     std::vector<double> siteLogLikelihoods(nPatterns);
     beagleGetSiteLogLikelihoods(instance, siteLogLikelihoods.data());
@@ -590,7 +604,8 @@ int main( int argc, const char* argv[] )
     beagleUpdatePrePartials(instance,
                             pre_order_operations,
                             4,
-                            BEAGLE_OP_NONE);
+                            BEAGLE_OP_NONE,
+                            useSampling);
     
     // MODIFICATION: Update the output message to reflect if sampling was used.
     // The reference value (R) is only valid without sampling.
@@ -629,29 +644,58 @@ int main( int argc, const char* argv[] )
         int postBufferIndex = 4-i;
         int preBufferIndex = 5+i;
         beagleGetPartials(instance, preBufferIndex, BEAGLE_OP_NONE, seeprePartials);
+
+        std::string filename = useSampling ? "PostPartialOutputSampling.txt" : "PostPartialOutput.txt";
+        std::ofstream outFile(filename);
         if (i <= 1) {
             beagleGetPartials(instance, postBufferIndex, BEAGLE_OP_NONE, seepostPartials);
 
+            // --- 屏幕打印：这部分保留不变 ---
             std::cout << "Post-order Partials for node " << (4 - i) << " (Buffer Index: " << postBufferIndex << "):" << std::endl;
+            
             int currentIndex = 0;
             // 循环遍历每个速率类别
             for (int cat = 0; cat < rateCategoryCount; cat++) {
                 std::cout << "  Rate Category " << cat + 1 << ":" << std::endl;
+
                 // 循环遍历每个序列模式 (pattern)
                 for (int pat = 0; pat < nPatterns; pat++) {
                     std::cout << "    Pattern " << pat + 1 << ": [";
+
+                    // 1. 写入第一列：节点编号 (4-i)
+                    outFile << (4 - i);
+                    // 2. 写入新增的第二列：速率类别编号 (cat + 1，使其从1开始)
+                    outFile << " " << (cat + 1);
+
                     // 循环遍历每个状态 (A, C, G, T)
                     for (int state = 0; state < stateCount; state++) {
-                        std::cout << seepostPartials[currentIndex++];
+                        // 从数组中获取当前值
+                        double currentPartialValue = seepostPartials[currentIndex];
+
+                        // 3. 将值写入文件，前面加空格隔开
+                        outFile << " " << currentPartialValue;
+
+                        // --- 屏幕打印：保留不变 ---
+                        std::cout << currentPartialValue;
                         if (state < stateCount - 1) {
                             std::cout << ", ";
                         }
+                        
+                        // 在所有操作完成后，再移动索引
+                        currentIndex++;
                     }
+
+                    // --- 文件保存：新增的功能 ---
+                    // 4. 为文件写入换行符，结束这一行
+                    outFile << std::endl;
+                    
                     std::cout << "]" << std::endl;
                 }
             }
+            // --- 屏幕打印：保留不变 ---
             std::cout << "--------------------------------------------------" << std::endl;
         }
+        outFile.close();
 
 //        double * prePartialsPtr = seeprePartials;
         // double * postPartialsPtr = seepostPartials;
@@ -751,7 +795,8 @@ int main( int argc, const char* argv[] )
                                    4,
                                    firstBuffer.data(),
                                    sumBuffer.data(),
-                                   NULL);
+                                   NULL,
+                                   useSampling);
 
     std::cout << "check gradients  :";
     for (int i = 0; i < 4 * nPatterns; ++i) {

@@ -1637,11 +1637,12 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::updatePartials(const int* operations,
 BEAGLE_CPU_TEMPLATE
 int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::updatePrePartials(const int *operations,
                                                          int count,
-                                                         int cumulativeScaleIndex) {
+                                                         int cumulativeScaleIndex,
+                                                         bool subsampling) {
     int returnCode = BEAGLE_ERROR_GENERAL;
 
     bool byPartition = false;
-    returnCode = upPrePartials(byPartition, operations, count, cumulativeScaleIndex);
+    returnCode = upPrePartials(byPartition, operations, count, cumulativeScaleIndex, subsampling);
 
     return returnCode;
 }
@@ -2615,14 +2616,16 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calculateEdgeDerivatives(const int *postB
                                                                    int count,
                                                                    double *outDerivatives,
                                                                    double *outSumDerivatives,
-                                                                   double *outSumSquaredDerivatives) {
+                                                                   double *outSumSquaredDerivatives,
+                                                                   bool subsampling) {
     return calcEdgeLogDerivatives(
             postBufferIndices, preBufferIndices,
             derivativeMatrixIndices, NULL,
             categoryWeightsIndices,categoryRatesIndices, cumulativeScaleIndices,
             count,
             outDerivatives,
-            outSumDerivatives, outSumSquaredDerivatives);
+            outSumDerivatives, outSumSquaredDerivatives,
+            subsampling);
 }
 
         BEAGLE_CPU_TEMPLATE
@@ -2680,7 +2683,8 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::updatePrePartialsByPartition(const int* o
         returnCode = upPrePartials(byPartition,
                                   operations,
                                   count,
-                                  BEAGLE_OP_NONE);
+                                  BEAGLE_OP_NONE,
+                                  false);
     }
 
     return returnCode;
@@ -2952,7 +2956,8 @@ BEAGLE_CPU_TEMPLATE
 int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::upPrePartials(bool byPartition,
                                                      const int* operations,
                                                      int count,
-                                                     int cumulativeScaleIndex) {
+                                                     int cumulativeScaleIndex,
+                                                     bool subsampling) {
 
     REALTYPE* cumulativeScaleBuffer = NULL;  // don't need to normalize/transform back preOrderPartials, off by constant rescaling factor is fine
 //    if (cumulativeScaleIndex != BEAGLE_OP_NONE)
@@ -3055,7 +3060,7 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::upPrePartials(bool byPartition,
 
         if (tipStates2 != NULL) {
             calcPrePartialsStates(destPartials, partials1, matrices1, tipStates2, matrices2,
-                                  startPattern, endPattern);
+                                  startPattern, endPattern, subsampling);
 
             if (rescale == 1) {// Recompute scaleFactors
                 if (byPartition) {
@@ -3080,7 +3085,7 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::upPrePartials(bool byPartition,
 //            } else {
 
                 calcPrePartialsPartials(destPartials, partials1, matrices1, partials2, matrices2,
-                                        startPattern, endPattern);
+                                        startPattern, endPattern, subsampling);
 
                 if (rescale == 1) {// Recompute scaleFactors
                     if (byPartition) {
@@ -3210,7 +3215,8 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogDerivatives(const int *postBuf
                                                               int count,
                                                               double *outDerivatives,
                                                               double *outSumDerivatives,
-                                                              double *outSumSquaredDerivatives) {
+                                                              double *outSumSquaredDerivatives,
+                                                              bool subsampling) {
 
     int returnCode = BEAGLE_SUCCESS;
 
@@ -3242,7 +3248,8 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogDerivatives(const int *postBuf
                                         secondDerivativeIndex, categoryRates, categoryWeights,
                                         outDerivativesForNode,
                                         outSumDerivativesForNode,
-                                        outSumSquaredDerivativesForNode);
+                                        outSumSquaredDerivativesForNode,
+                                        subsampling);
 
         } else {
 
@@ -3354,7 +3361,8 @@ void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogDerivativesStates(const int *
                                                                      const REALTYPE *categoryWeights,
                                                                      double *outDerivatives,
                                                                      double *outSumDerivatives,
-                                                                     double *outSumSquaredDerivatives) {
+                                                                     double *outSumSquaredDerivatives,
+                                                                     bool subsampling) {
 
     const REALTYPE *firstDerivMatrix = gTransitionMatrices[firstDerivativeIndex];
 
@@ -6062,7 +6070,8 @@ void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcPrePartialsPartials(REALTYPE* destP,
                                                                 const REALTYPE* partials2,
                                                                 const REALTYPE* matrices2,
                                                                 int startPattern,
-                                                                int endPattern) {
+                                                                int endPattern,
+                                                                bool subsampling) {
     int matrixIncr = kStateCount;
 
     // increment for the extra column at the end
@@ -6138,7 +6147,8 @@ void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcPrePartialsStates(REALTYPE* destP,
                                                               const int* states2,
                                                               const REALTYPE* matrices2,
                                                               int startPattern,
-                                                              int endPattern) {
+                                                              int endPattern,
+                                                              bool subsampling) {
     int matrixIncr = kStateCount;
 
     // increment for the extra column at the end
