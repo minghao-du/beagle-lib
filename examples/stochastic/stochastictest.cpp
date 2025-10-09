@@ -660,18 +660,11 @@ int main( int argc, const char* argv[] )
                 for (int pat = 0; pat < nPatterns; pat++) {
                     std::cout << "    Pattern " << pat + 1 << ": [";
 
-                    // 1. 写入第一列：节点编号 (4-i)
-                    outFile << (4 - i);
-                    // 2. 写入新增的第二列：速率类别编号 (cat + 1，使其从1开始)
-                    outFile << " " << (cat + 1);
-
                     // 循环遍历每个状态 (A, C, G, T)
                     for (int state = 0; state < stateCount; state++) {
                         // 从数组中获取当前值
                         double currentPartialValue = seepostPartials[currentIndex];
 
-                        // 3. 将值写入文件，前面加空格隔开
-                        outFile << " " << currentPartialValue;
 
                         // --- 屏幕打印：保留不变 ---
                         std::cout << currentPartialValue;
@@ -682,10 +675,6 @@ int main( int argc, const char* argv[] )
                         // 在所有操作完成后，再移动索引
                         currentIndex++;
                     }
-
-                    // --- 文件保存：新增的功能 ---
-                    // 4. 为文件写入换行符，结束这一行
-                    outFile << std::endl;
                     
                     std::cout << "]" << std::endl;
                 }
@@ -693,7 +682,6 @@ int main( int argc, const char* argv[] )
             // --- 屏幕打印：保留不变 ---
             std::cout << "--------------------------------------------------" << std::endl;
         }
-        outFile.close();
 
 //        double * prePartialsPtr = seeprePartials;
         // double * postPartialsPtr = seepostPartials;
