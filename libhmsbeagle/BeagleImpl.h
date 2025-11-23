@@ -263,6 +263,42 @@ public:
 
     virtual int getSiteDerivatives(double* outFirstDerivatives,
                                    double* outSecondDerivatives) = 0;
+
+    /**
+     * @brief Sets the specific subset of patterns and their associated weights for subsampling.
+     *
+     * @details This function allocates internal memory and performs a deep copy of the provided 
+     * indices and weights. The client is free to release the source arrays after this call returns.
+     * This function does NOT automatically enable subsampling. Use enableSubsampling() to 
+     * toggle the calculation mode.
+     *
+     * @param count             The number of patterns to be included in the subsample (must be > 0).
+     * @param subsampleIndices  Pointer to an array of pattern indices (length must equal count).
+     * @param subsampleWeights  Pointer to an array of pattern weights (length must equal count).
+     * @return BEAGLE_SUCCESS if successful.
+     * @return BEAGLE_ERROR_OUT_OF_MEMORY if internal buffers could not be allocated.
+     * @return BEAGLE_ERROR_OUT_OF_RANGE if count is <= 0 or pointers are NULL.
+     */
+    virtual int setSubsamplingPatterns(int count,
+                                       const int* subsampleIndices, 
+                                       const double* subsampleWeights) = 0;
+
+    /**
+     * @brief Toggles the subsampling calculation mode.
+     *
+     * @details When enabled (enable = true), subsequent likelihood calculations (e.g., updatePartials, 
+     * calculateRootLogLikelihoods) will restrict computation to the patterns specified via 
+     * setSubsamplingPatterns().
+     * If enabled, the calculation complexity effectively scales with the subsample size rather 
+     * than the total pattern count.
+     *
+     * @param enable  If true, enables subsampling; if false, disables it (restoring full calculation).
+     * @return BEAGLE_SUCCESS if the state was successfully set.
+     * @return BEAGLE_ERROR_GENERAL if attempting to enable subsampling without previously setting 
+     * valid patterns via setSubsamplingPatterns().
+     */
+    virtual int enableSubsampling(bool enable) = 0;         
+
 //protected:
     int resourceNumber;
 };

@@ -1398,6 +1398,37 @@ BEAGLE_DLLEXPORT int beagleGetSiteDerivatives(int instance,
                                     double* outFirstDerivatives,
                                     double* outSecondDerivatives);
 
+/**
+ * @brief Set the subset of patterns and their weights for subsampled calculations.
+ * 
+ * This function populates the internal buffers with the specific pattern indices
+ * and weights provided by the client. It does NOT automatically enable subsampling;
+ * use beagleEnableSubsampling for that.
+ *
+ * @param instance              Instance number.
+ * @param subsampleIndices      Array of pattern indices to be used for subsampling (length = count).
+ * @param subsampleWeights      Array of weights corresponding to these indices (length = count).
+ * @return error code
+ */
+BEAGLE_DLLEXPORT int beagleSetSubsamplingPatterns(int instance,
+                                                  int count,
+                                                  const int* subsampleIndices,
+                                                  const double* subsampleWeights);
+
+/**
+ * @brief Enable or disable subsampling mode.
+ * 
+ * When enabled, likelihood calculations will iterate only over the indices 
+ * provided by beagleSetSubsamplingPatterns using the provided weights.
+ * Fails if no patterns have been set.
+ *
+ * @param instance              Instance number.
+ * @param enable                1 to enable, 0 to disable.
+ * @return error code
+ */
+BEAGLE_DLLEXPORT int beagleEnableSubsampling(int instance,
+                                             int enable);
+
 /* using C calling conventions so that C programs can successfully link the beagle library
  * (closing brace)
  */

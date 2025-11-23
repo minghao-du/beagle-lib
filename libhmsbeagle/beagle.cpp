@@ -1863,3 +1863,32 @@ int beagleCalculateEdgeDerivative(int instance, const int *postBufferIndices, co
     return BEAGLE_ERROR_NO_IMPLEMENTATION;
 }
 
+// Implementation of API to set subsampling patterns
+int beagleSetSubsamplingPatterns(int instance,
+                                 int count,
+                                 const int* subsampleIndices,
+                                 const double* subsampleWeights) {
+    DEBUG_START_TIME();
+    beagle::BeagleImpl* beagleInstance = beagle::getBeagleInstance(instance);
+    if (beagleInstance == NULL)
+        return BEAGLE_ERROR_UNINITIALIZED_INSTANCE;
+    
+    int returnValue = beagleInstance->setSubsamplingPatterns(count, subsampleIndices, subsampleWeights);
+    
+    DEBUG_END_TIME();
+    return returnValue;
+}
+
+// Implementation of API to enable/disable subsampling
+int beagleEnableSubsampling(int instance, int enable) {
+    DEBUG_START_TIME();
+    beagle::BeagleImpl* beagleInstance = beagle::getBeagleInstance(instance);
+    if (beagleInstance == NULL)
+        return BEAGLE_ERROR_UNINITIALIZED_INSTANCE;
+        
+    // Convert int to bool
+    int returnValue = beagleInstance->enableSubsampling(enable != 0);
+    
+    DEBUG_END_TIME();
+    return returnValue;
+}

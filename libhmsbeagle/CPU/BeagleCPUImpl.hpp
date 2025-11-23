@@ -486,6 +486,14 @@ int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::createInstance(int tipCount,
         }
     }
 
+    // Subsampling members
+    // Initialize subsampling state flags to false (disabled by default)
+    kIsSubsamplingEnabled = false;
+
+    // Clear subsampling data vectors to ensure a clean state
+    gSubsampledPatternIndices.clear();
+    gSubsampledPatternWeights.clear();
+
     return BEAGLE_SUCCESS;
 }
 
@@ -4895,6 +4903,50 @@ const long BeagleCPUImplFactory<BEAGLE_CPU_FACTORY_GENERIC>::getFlags() {
     else
         flags |= BEAGLE_FLAG_PRECISION_SINGLE;
     return flags;
+}
+
+// Implement setSubsamplingPatterns (Data Input)
+BEAGLE_CPU_TEMPLATE
+int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::setSubsamplingPatterns(int count,
+                                                              const int* subsampleIndices,
+                                                              const double* subsampleWeights) {
+    // Validate input parameters
+    if (count <= 0 || subsampleIndices == NULL || subsampleWeights == NULL) {
+        // If invalid data is provided, clear internal buffers and forcibly disable subsampling
+        gSubsampledPatternIndices.clear();
+        gSubsampledPatternWeights.clear();
+        kIsSubsamplingEnabled = false; 
+        return BEAGLE_ERROR_OUT_OF_RANGE;
+    }
+
+    try {
+        // Deep copy the indices provided by the client
+        gSubsampledPatternIndices.resize(count);
+        std::memcpy(gSubsampledPatternIndices.data(), subsampleIndices, sizeof(int) * count);
+
+        // Deep copy the weights provided by the client
+        gSubsampledPatternWeights.resize(count);
+        std::memcpy(gSubsampledPatternWeights.data(), subsampleWeights, sizeof(double) * count);
+    } catch (std::bad_alloc &) {
+        return BEAGLE_ERROR_OUT_OF_MEMORY;
+    }
+
+    return BEAGLE_SUCCESS;
+}
+
+// Implement enableSubsampling (State Switch)
+BEAGLE_CPU_TEMPLATE
+int BeagleCPUImpl<BEAGLE_CPU_GENERIC>::enableSubsampling(bool enable) {
+    if (enable) {
+        // If the client attempts to enable subsampling but no data has been set, return an error
+        if (gSubsampledPatternIndices.empty()) {
+            return BEAGLE_ERROR_GENERAL; 
+        }
+        kIsSubsamplingEnabled = true;
+    } else {
+        kIsSubsamplingEnabled = false;
+    }
+    return BEAGLE_SUCCESS;
 }
 
 }   // namespace cpu

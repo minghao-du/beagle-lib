@@ -155,6 +155,13 @@ protected:
     double* gAutoPartitionOutSumLogLikelihoods;
     std::shared_future<void>* gFutures;
 
+    // Subsampling members
+    // Todo(Minghao): g and k prefixes?
+    std::vector<int> gSubsampledPatternIndices;    // Stores indices of patterns to be used for subsampling (provided by client)
+    std::vector<double> gSubsampledPatternWeights; // Stores weights corresponding to the subsampled patterns (provided by client)
+    
+    bool kIsSubsamplingEnabled;                    // State flag indicating if subsampling is currently enabled
+
 public:
     virtual ~BeagleCPUImpl();
 
@@ -766,6 +773,11 @@ protected:
 
     void threadWaiting(threadData* tData);
 
+    virtual int setSubsamplingPatterns(int count, 
+                                       const int* subsampleIndices, 
+                                       const double* subsampleWeights) override;
+
+    virtual int enableSubsampling(bool enable) override;
 private:
 
     template <bool DoDerivatives>
