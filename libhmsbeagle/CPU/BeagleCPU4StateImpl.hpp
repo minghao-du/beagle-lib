@@ -388,16 +388,47 @@ void BeagleCPU4StateImpl<BEAGLE_CPU_GENERIC>::calcPrePartialsPartials(REALTYPE* 
 
 #pragma omp parallel for num_threads(kCategoryCount)
     for (int l = 0; l < kCategoryCount; l++) {
-        int u = l*4*kPaddedPatternCount;
-        if (startPattern != 0) {
-            u += 4*startPattern;
-        }
+        // int u = l*4*kPaddedPatternCount;
+        // if (startPattern != 0) {
+        //     u += 4*startPattern;
+        // }
+        // int w = l*4*OFFSET;
+
+
+        // PREFETCH_MATRIX(2,matrices2,w); // m200, m201, ..., m233
+        // PREFETCH_MATRIX_TRANSPOSE(1,matrices1,w); //m100, m101, ..., m133
+        // for (int k = startPattern; k < endPattern; k++) {
+        //     PREFETCH_PARTIALS(2,partials2,u); // p20, p21, p22, p23
+        //     PREFETCH_PARTIALS(1,partials1,u); // p10, p11, p12, p13
+
+        //     DO_INTEGRATION(2); // defines sum20, sum21, sum22, sum23
+        //     DO_SCHUR_PRODUCT(1, 1, 2); // reWrites p10, p11, p12, p13
+
+        //     DO_INTEGRATION(1); // defines sum10, sum11, sum12, sum13
+
+        //     // Final results
+        //     destP[u    ] = sum10;
+        //     destP[u + 1] = sum11;
+        //     destP[u + 2] = sum12;
+        //     destP[u + 3] = sum13;
+
+        //     u += 4;
+
+        // }
+
+        // 'w' can be calculated once per category, as it only depends on 'l'.
         int w = l*4*OFFSET;
 
-
+        // Prefetching of matrices can happen once before processing all patterns in this category
         PREFETCH_MATRIX(2,matrices2,w); // m200, m201, ..., m233
         PREFETCH_MATRIX_TRANSPOSE(1,matrices1,w); //m100, m101, ..., m133
-        for (int k = startPattern; k < endPattern; k++) {
+
+        // Encapsulate the logic for a single pattern 'k' into a lambda.
+        auto process_pattern = [&](int k) {
+            // Key change: Calculate index 'u' directly for each 'k'.
+            // This replaces the sequential 'u += 4' and allows for random access.
+            int u = l * 4 * kPaddedPatternCount + k * 4;
+
             PREFETCH_PARTIALS(2,partials2,u); // p20, p21, p22, p23
             PREFETCH_PARTIALS(1,partials1,u); // p10, p11, p12, p13
 
@@ -412,8 +443,21 @@ void BeagleCPU4StateImpl<BEAGLE_CPU_GENERIC>::calcPrePartialsPartials(REALTYPE* 
             destP[u + 2] = sum12;
             destP[u + 3] = sum13;
 
-            u += 4;
+            // Note: The original 'u += 4' is no longer needed because 'u' is
+            // recalculated at the start of every call for the given 'k'.
+        };
 
+        // Choose the iteration method based on the 'subsampling' flag.
+        if (kIsSubsamplingEnabled) {
+            // Iterate over the sparse list of pattern indices.
+            for (const auto& k : this->gSubsampledPatternIndices) {
+                process_pattern(k);
+            }
+        } else {
+            // Iterate over the contiguous range of patterns.
+            for (int k = startPattern; k < endPattern; k++) {
+                process_pattern(k);
+            }
         }
     }
 }
@@ -430,15 +474,45 @@ void BeagleCPU4StateImpl<BEAGLE_CPU_GENERIC>::calcPrePartialsStates(REALTYPE* de
 
 #pragma omp parallel for num_threads(kCategoryCount)
     for (int l = 0; l < kCategoryCount; l++) {
-        int u = l*4*kPaddedPatternCount;
-        if (startPattern != 0) {
-            u += 4*startPattern;
-        }
+        // int u = l*4*kPaddedPatternCount;
+        // if (startPattern != 0) {
+        //     u += 4*startPattern;
+        // }
+        // int w = l*4*OFFSET;
+
+
+        // PREFETCH_MATRIX_TRANSPOSE(1, matrices1, w); //m100, m101, ..., m133
+        // for (int k = startPattern; k < endPattern; k++) {
+        //     PREFETCH_PARTIALS(1, partials1, u); // p10, p11, p12, p13
+
+        //     const int state2 = states2[k];
+        //     PREFETCH_MATRIX_COLUMN(2, matrices2, w + state2); // sum20, sum21, sum22, sum23
+
+        //     DO_SCHUR_PRODUCT(1, 1, 2); // reWrites p10, p11, p12, p13
+
+        //     DO_INTEGRATION(1); // defines sum10, sum11, sum12, sum13
+
+        //     // Final results
+        //     destP[u] = sum10;
+        //     destP[u + 1] = sum11;
+        //     destP[u + 2] = sum12;
+        //     destP[u + 3] = sum13;
+
+        //     u += 4;
+
+        // }
+
+        // 'w' can be calculated once per category, as it only depends on 'l'.
         int w = l*4*OFFSET;
 
-
         PREFETCH_MATRIX_TRANSPOSE(1, matrices1, w); //m100, m101, ..., m133
-        for (int k = startPattern; k < endPattern; k++) {
+
+        // Encapsulate the logic for a single pattern 'k' into a lambda.
+        auto process_pattern = [&](int k) {
+            // Key change: Calculate index 'u' directly for each 'k'.
+            // This replaces the sequential 'u += 4' and allows for random access.
+            int u = l * 4 * kPaddedPatternCount + k * 4;
+
             PREFETCH_PARTIALS(1, partials1, u); // p10, p11, p12, p13
 
             const int state2 = states2[k];
@@ -454,8 +528,21 @@ void BeagleCPU4StateImpl<BEAGLE_CPU_GENERIC>::calcPrePartialsStates(REALTYPE* de
             destP[u + 2] = sum12;
             destP[u + 3] = sum13;
 
-            u += 4;
+            // Note: The original 'u += 4' is no longer needed because 'u' is
+            // recalculated at the start of every call for the given 'k'.
+        };
 
+        // Choose the iteration method based on the 'subsampling' flag.
+        if (kIsSubsamplingEnabled) {
+            // Iterate over the sparse list of pattern indices.
+            for (const auto& k : this->gSubsampledPatternIndices) {
+                process_pattern(k);
+            }
+        } else {
+            // Iterate over the contiguous range of patterns.
+            for (int k = startPattern; k < endPattern; k++) {
+                process_pattern(k);
+            }
         }
     }
 }
@@ -1014,8 +1101,31 @@ void BeagleCPU4StateImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogDerivativesStates(const
 
         const REALTYPE *firstDerivMatrix = gTransitionMatrices[firstDerivativeIndex] + category * kMatrixSize;
 
-        for (int pattern = 0; pattern < kPatternCount; pattern++) {
+        // for (int pattern = 0; pattern < kPatternCount; pattern++) {
 
+        //     const int patternIndex = category * kPatternCount + pattern;
+        //     const int localPatternOffset = patternIndex * 4;
+
+        //     const int state = tipStates[pattern];
+
+        //     PREFETCH_MATRIX_COLUMN(0, firstDerivMatrix, state);
+
+        //     REALTYPE numerator =
+        //             sum00 * preOrderPartial[localPatternOffset] +
+        //             sum01 * preOrderPartial[localPatternOffset + 1] +
+        //             sum02 * preOrderPartial[localPatternOffset + 2] +
+        //             sum03 * preOrderPartial[localPatternOffset + 3];
+
+        //     REALTYPE denominator = preOrderPartial[localPatternOffset + (state & 3)];
+
+        //     grandNumeratorDerivTmp[pattern] += categoryWeights[category] * numerator;
+        //     grandDenominatorDerivTmp[pattern] += categoryWeights[category] * denominator;
+        // }
+
+        // Encapsulate the logic for a single pattern into a lambda.
+        auto process_pattern = [&](int pattern) {
+            // The original logic is already "random-access friendly".
+            // All indices are calculated directly from 'category' and 'pattern'.
             const int patternIndex = category * kPatternCount + pattern;
             const int localPatternOffset = patternIndex * 4;
 
@@ -1031,8 +1141,22 @@ void BeagleCPU4StateImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogDerivativesStates(const
 
             REALTYPE denominator = preOrderPartial[localPatternOffset + (state & 3)];
 
+            // The results are accumulated into temporary buffers using the 'pattern' index.
             grandNumeratorDerivTmp[pattern] += categoryWeights[category] * numerator;
             grandDenominatorDerivTmp[pattern] += categoryWeights[category] * denominator;
+        };
+
+        // Choose the iteration method based on the 'subsampling' flag.
+        if (kIsSubsamplingEnabled) {
+            // Iterate over the sparse list of pattern indices.
+            for (const auto& pattern : this->gSubsampledPatternIndices) {
+                process_pattern(pattern);
+            }
+        } else {
+            // Iterate over the full, contiguous range of patterns, same as the original code.
+            for (int pattern = 0; pattern < kPatternCount; pattern++) {
+                process_pattern(pattern);
+            }
         }
     }
 }
@@ -1054,13 +1178,41 @@ void BeagleCPU4StateImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogDerivativesPartials(con
     int w = 0;
     for(int l = 0; l < kCategoryCount; l++) {
 
-        int v = l*kPaddedPatternCount*4;
+//         int v = l*kPaddedPatternCount*4;
+
+//         const REALTYPE weight = categoryWeights[l];
+
+//         PREFETCH_MATRIX(1,transMatrix,w); // TODO Use _TRANSPOSE and then reverse integration below
+
+//         for(int k = 0; k < kPatternCount; k++) {
+
+//             PREFETCH_PARTIALS(1, postOrderPartial,v);
+//             PREFETCH_PARTIALS(0, preOrderPartial, v);
+
+
+//             DO_INTEGRATION(1);
+
+// //            grandNumeratorDerivTmp[k] += (sum10 * prePartials[v] + sum11 * prePartials[v + 1]
+// //                    + sum12 * prePartials[v + 2] + sum13 * prePartials[v + 3]) * weight;
+// //            grandDenominatorDerivTmp[k] += (postPartials[v] * prePartials[v] + postPartials[v + 1] * prePartials[v + 1]
+// //                    + postPartials[v + 2] * prePartials[v + 2] + postPartials[v + 3] * prePartials[v + 3]) * weight;
+
+//             grandDenominatorDerivTmp[k] += (p10 * p00 + p11 * p01 + p12 * p02 + p13 * p03) * weight;
+//             grandNumeratorDerivTmp[k] += (sum10 * p00 + sum11 * p01 + sum12 * p02 + sum13 * p03) * weight;
+
+//             v += 4;
+//         }
+//         w += OFFSET*4;
 
         const REALTYPE weight = categoryWeights[l];
 
-        PREFETCH_MATRIX(1,transMatrix,w); // TODO Use _TRANSPOSE and then reverse integration below
+        PREFETCH_MATRIX(1,transMatrix,w);
 
-        for(int k = 0; k < kPatternCount; k++) {
+        // Encapsulate the logic for a single pattern 'k' into a lambda.
+        auto process_pattern = [&](int k) {
+            // Key change: Calculate index 'v' directly for each 'k'.
+            // This replaces the sequential 'v += 4' and allows for random access.
+            int v = l * kPaddedPatternCount * 4 + k * 4;
 
             PREFETCH_PARTIALS(1, postOrderPartial,v);
             PREFETCH_PARTIALS(0, preOrderPartial, v);
@@ -1068,15 +1220,24 @@ void BeagleCPU4StateImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogDerivativesPartials(con
 
             DO_INTEGRATION(1);
 
-//            grandNumeratorDerivTmp[k] += (sum10 * prePartials[v] + sum11 * prePartials[v + 1]
-//                    + sum12 * prePartials[v + 2] + sum13 * prePartials[v + 3]) * weight;
-//            grandDenominatorDerivTmp[k] += (postPartials[v] * prePartials[v] + postPartials[v + 1] * prePartials[v + 1]
-//                    + postPartials[v + 2] * prePartials[v + 2] + postPartials[v + 3] * prePartials[v + 3]) * weight;
-
             grandDenominatorDerivTmp[k] += (p10 * p00 + p11 * p01 + p12 * p02 + p13 * p03) * weight;
             grandNumeratorDerivTmp[k] += (sum10 * p00 + sum11 * p01 + sum12 * p02 + sum13 * p03) * weight;
 
-            v += 4;
+            // Note: The original 'v += 4' is no longer needed because 'v' is
+            // recalculated at the start of every call for the given 'k'.
+        };
+
+        // Choose the iteration method based on the 'subsampling' flag.
+        if (kIsSubsamplingEnabled) {
+            // Iterate over the sparse list of pattern indices.
+            for (const auto& k : this->gSubsampledPatternIndices) {
+                process_pattern(k);
+            }
+        } else {
+            // Iterate over the full, contiguous range of patterns, same as the original code.
+            for (int k = 0; k < kPatternCount; k++) {
+                process_pattern(k);
+            }
         }
         w += OFFSET*4;
     }

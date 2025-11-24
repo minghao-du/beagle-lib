@@ -64,6 +64,9 @@ protected:
   using BeagleCPUImpl<BEAGLE_CPU_GENERIC>::gPatternPartitionsStartPatterns;
   using BeagleCPUImpl<BEAGLE_CPU_GENERIC>::accumulateDerivatives;
   using BeagleCPUImpl<BEAGLE_CPU_GENERIC>::calcEdgeLogDerivatives;
+  using BeagleCPUImpl<BEAGLE_CPU_GENERIC>::gSubsampledPatternIndices;
+  using BeagleCPUImpl<BEAGLE_CPU_GENERIC>::gSubsampledPatternWeights;
+  using BeagleCPUImpl<BEAGLE_CPU_GENERIC>::kIsSubsamplingEnabled;
 
 public:
     virtual ~BeagleCPU4StateImpl();
