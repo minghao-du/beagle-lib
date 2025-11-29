@@ -2032,27 +2032,34 @@ void BeagleCPUImpl<BEAGLE_CPU_GENERIC>::accumulateDerivativesImpl(
     //     }
     // }
 
-    // Determine the list of pattern indices to process based on the subsampling flag.
-    std::vector<int> indicesToProcess;
     if (kIsSubsamplingEnabled) {
-        indicesToProcess = this->gSubsampledPatternIndices;
-    } else {
-        indicesToProcess.resize(kPatternCount);
-        std::iota(indicesToProcess.begin(), indicesToProcess.end(), 0); // Fills with 0, 1, 2...
-    }
+        for (size_t i = 0; i < gSubsampledPatternIndices.size(); ++i) {    
+            int k = gSubsampledPatternIndices[i];
+            double weight = gSubsampledPatternWeights[i];
 
-    // Loop over the selected indices.
-    // The original logic already uses direct access via 'k', so it's perfectly compatible.
-    for (int k : indicesToProcess) {
-        REALTYPE derivative = grandNumeratorDerivTmp[k] / grandDenominatorDerivTmp[k];
-        if (DoDerivatives) {
-            outDerivatives[k] = derivative;
+            REALTYPE derivative = grandNumeratorDerivTmp[k] / grandDenominatorDerivTmp[k];
+            if (DoDerivatives) {
+                outDerivatives[k] = derivative;
+            }
+            if (DoSum) { 
+                sum += derivative * weight;
+            }
+            if (DoSumSquared) {
+                sumSquared += derivative * derivative * weight;
+            }
         }
-        if (DoSum) { // These are compile-time constants, so the check has no runtime cost.
-            sum += derivative * gPatternWeights[k];
-        }
-        if (DoSumSquared) {
-            sumSquared += derivative * derivative * gPatternWeights[k];
+    } else {
+        for (int k = 0; k < kPatternCount; k++) {
+            REALTYPE derivative = grandNumeratorDerivTmp[k] / grandDenominatorDerivTmp[k];
+            if (DoDerivatives) {
+                outDerivatives[k] = derivative;
+            }
+            if (DoSum) { // TODO Confirm that these are compile-time
+                sum += derivative * gPatternWeights[k];
+            }
+            if (DoSumSquared) {
+                sumSquared += derivative * derivative * gPatternWeights[k];
+            }
         }
     }
 
