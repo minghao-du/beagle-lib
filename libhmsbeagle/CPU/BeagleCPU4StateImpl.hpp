@@ -660,29 +660,74 @@ int inline BeagleCPU4StateImpl<BEAGLE_CPU_GENERIC>::integrateOutStatesAndScale(c
     freq2 = gStateFrequencies[stateFrequenciesIndex][2];
     freq3 = gStateFrequencies[stateFrequenciesIndex][3];
 
-    int u = 0;
-    for(int k = 0; k < kPatternCount; k++) {
-        REALTYPE sumOverI =
-        freq0 * integrationTmp[u    ] +
-        freq1 * integrationTmp[u + 1] +
-        freq2 * integrationTmp[u + 2] +
-        freq3 * integrationTmp[u + 3];
+    // int u = 0;
+    // for(int k = 0; k < kPatternCount; k++) {
+    //     REALTYPE sumOverI =
+    //     freq0 * integrationTmp[u    ] +
+    //     freq1 * integrationTmp[u + 1] +
+    //     freq2 * integrationTmp[u + 2] +
+    //     freq3 * integrationTmp[u + 3];
 
-        u += 4;
+    //     u += 4;
 
-        outLogLikelihoodsTmp[k] = log(sumOverI);
-    }
+    //     outLogLikelihoodsTmp[k] = log(sumOverI);
+    // }
 
-    if (scalingFactorsIndex != BEAGLE_OP_NONE) {
-        const REALTYPE* scalingFactors = gScaleBuffers[scalingFactorsIndex];
-        for(int k=0; k < kPatternCount; k++) {
-            outLogLikelihoodsTmp[k] += scalingFactors[k];
-        }
-    }
+    // if (scalingFactorsIndex != BEAGLE_OP_NONE) {
+    //     const REALTYPE* scalingFactors = gScaleBuffers[scalingFactorsIndex];
+    //     for(int k=0; k < kPatternCount; k++) {
+    //         outLogLikelihoodsTmp[k] += scalingFactors[k];
+    //     }
+    // }
 
     *outSumLogLikelihood = 0.0;
-    for(int k=0; k < kPatternCount; k++) {
-        *outSumLogLikelihood += outLogLikelihoodsTmp[k] * gPatternWeights[k];
+    // for(int k=0; k < kPatternCount; k++) {
+    //     *outSumLogLikelihood += outLogLikelihoodsTmp[k] * gPatternWeights[k];
+    // }
+
+    // Define a lambda to handle the logic for a single pattern
+    // This fuses the calculation, scaling, and summation steps into one pass
+    auto process_pattern = [&](int k, double weight) {
+        // Calculate explicit offset for random access
+        // integrationTmp layout corresponds to k * 4
+        int u = k * 4;
+
+        // Calculate Sum over I (Likelihood for this site)
+        REALTYPE sumOverI =
+            freq0 * integrationTmp[u    ] +
+            freq1 * integrationTmp[u + 1] +
+            freq2 * integrationTmp[u + 2] +
+            freq3 * integrationTmp[u + 3];
+
+        // Calculate Log Likelihood
+        double logL = log(sumOverI);
+
+        // Apply Scaling Factor if necessary
+        if (scalingFactorsIndex != BEAGLE_OP_NONE) {
+            logL += gScaleBuffers[scalingFactorsIndex][k];
+        }
+
+        // Store result for potential retrieval by other functions
+        outLogLikelihoodsTmp[k] = logL;
+
+        // Accumulate total Log Likelihood using the correct weight
+        *outSumLogLikelihood += logL * weight;
+    };
+
+    // Branch based on whether subsampling is enabled
+    if (kIsSubsamplingEnabled) {
+        // Subsampling path: Iterate only over selected indices using subsampled weights
+        for (size_t i = 0; i < this->gSubsampledPatternIndices.size(); ++i) {
+            int k = this->gSubsampledPatternIndices[i];
+            double weight = this->gSubsampledPatternWeights[i];
+            process_pattern(k, weight);
+        }
+    } else {
+        // Standard path: Iterate over all patterns using original weights
+        for (int k = 0; k < kPatternCount; k++) {
+            double weight = gPatternWeights[k];
+            process_pattern(k, weight);
+        }
     }
 
     if (*outSumLogLikelihood != *outSumLogLikelihood)
@@ -1058,29 +1103,83 @@ int BeagleCPU4StateImpl<BEAGLE_CPU_GENERIC>::calcRootLogLikelihoods(const int bu
     assert(rootPartials);
     const REALTYPE* wt = gCategoryWeights[categoryWeightsIndex];
 
-    int u = 0;
-    int v = 0;
+    // int u = 0;
+    // int v = 0;
+    // const REALTYPE wt0 = wt[0];
+    // for (int k = 0; k < kPatternCount; k++) {
+    //     integrationTmp[v    ] = rootPartials[v    ] * wt0;
+    //     integrationTmp[v + 1] = rootPartials[v + 1] * wt0;
+    //     integrationTmp[v + 2] = rootPartials[v + 2] * wt0;
+    //     integrationTmp[v + 3] = rootPartials[v + 3] * wt0;
+    //     v += 4;
+    // }
+    // for (int l = 1; l < kCategoryCount; l++) {
+    //     u = 0;
+    //     const REALTYPE wtl = wt[l];
+    //     for (int k = 0; k < kPatternCount; k++) {
+    //         integrationTmp[u    ] += rootPartials[v    ] * wtl;
+    //         integrationTmp[u + 1] += rootPartials[v + 1] * wtl;
+    //         integrationTmp[u + 2] += rootPartials[v + 2] * wtl;
+    //         integrationTmp[u + 3] += rootPartials[v + 3] * wtl;
+
+    //         u += 4;
+    //         v += 4;
+    //     }
+	// 	v += 4 * kExtraPatterns;
+    // }
+
+    // Define the stride for jumping between categories (used for explicit offset calculation)
+    const int categoryStride = kPaddedPatternCount * 4;
+
+    // --- Phase 1: Category 0 (Initialization) ---
+    // We define the logic in a lambda to avoid copying the math formula
     const REALTYPE wt0 = wt[0];
-    for (int k = 0; k < kPatternCount; k++) {
-        integrationTmp[v    ] = rootPartials[v    ] * wt0;
-        integrationTmp[v + 1] = rootPartials[v + 1] * wt0;
-        integrationTmp[v + 2] = rootPartials[v + 2] * wt0;
-        integrationTmp[v + 3] = rootPartials[v + 3] * wt0;
-        v += 4;
+    auto init_pattern_logic = [&](int k) {
+        int offset = k * 4;
+        
+        integrationTmp[offset    ] = rootPartials[offset    ] * wt0;
+        integrationTmp[offset + 1] = rootPartials[offset + 1] * wt0;
+        integrationTmp[offset + 2] = rootPartials[offset + 2] * wt0;
+        integrationTmp[offset + 3] = rootPartials[offset + 3] * wt0;
+    };
+
+    // Execute Phase 1 Loops
+    if (kIsSubsamplingEnabled) {
+        for (size_t i = 0; i < this->gSubsampledPatternIndices.size(); ++i) {
+            init_pattern_logic(this->gSubsampledPatternIndices[i]);
+        }
+    } else {
+        for (int k = 0; k < kPatternCount; ++k) {
+            init_pattern_logic(k);
+        }
     }
+
+    // --- Phase 2: Remaining Categories (Accumulation) ---
     for (int l = 1; l < kCategoryCount; l++) {
-        u = 0;
         const REALTYPE wtl = wt[l];
-        for (int k = 0; k < kPatternCount; k++) {
+        int categoryOffset = l * categoryStride;
+
+        // Define logic for accumulating category l
+        auto accum_pattern_logic = [&](int k) {
+            int u = k * 4;
+            int v = categoryOffset + u;
+
             integrationTmp[u    ] += rootPartials[v    ] * wtl;
             integrationTmp[u + 1] += rootPartials[v + 1] * wtl;
             integrationTmp[u + 2] += rootPartials[v + 2] * wtl;
             integrationTmp[u + 3] += rootPartials[v + 3] * wtl;
+        };
 
-            u += 4;
-            v += 4;
+        // Execute Phase 2 Loops
+        if (kIsSubsamplingEnabled) {
+            for (size_t i = 0; i < this->gSubsampledPatternIndices.size(); ++i) {
+                accum_pattern_logic(this->gSubsampledPatternIndices[i]);
+            }
+        } else {
+            for (int k = 0; k < kPatternCount; ++k) {
+                accum_pattern_logic(k);
+            }
         }
-		v += 4 * kExtraPatterns;
     }
 
     return integrateOutStatesAndScale(integrationTmp, stateFrequenciesIndex, scalingFactorsIndex, outSumLogLikelihood);
