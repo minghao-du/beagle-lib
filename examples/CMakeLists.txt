@@ -25,6 +25,9 @@ add_executable(synthetictest
 		synthetictest/linalg.h
 		)
 
+add_executable(sghmctest
+        sghmctest/sghmctest.cpp)
+
 #add_executable(complextest
 #        complextest/complextest.cpp)
 
@@ -48,7 +51,19 @@ if(BUILD_SSE)
 		hmsbeagle-cpu-sse)		
 endif(BUILD_SSE)
 
+target_link_libraries(sghmctest
+		hmsbeagle
+		hmsbeagle-cpu
+		${BENCHMARK_LIBS}
+		${CMAKE_DL_LIBS})
+if(BUILD_SSE)
+	target_link_libraries(sghmctest hmsbeagle-cpu-sse)
+endif(BUILD_SSE)
+
 add_test(hmctest hmctest)
+
+add_test(sghmctest sghmctest)
+
 
 #target_link_libraries(hmctest5 hmsbeagle ${CMAKE_DL_LIBS})
 #target_link_libraries(hmcGaptest hmsbeagle ${CMAKE_DL_LIBS})
